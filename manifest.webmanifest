@@ -1,0 +1,14 @@
+{
+  "name": "Vend Nous Ta Maladie",
+  "short_name": "VNTM",
+  "description": "Marketplace de santé naturelle et de médecine traditionnelle",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "lang": "fr",
+  "background_color": "#FAF6EC",
+  "theme_color": "#2F5233",
+  "icons": [
+    { "src": "/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

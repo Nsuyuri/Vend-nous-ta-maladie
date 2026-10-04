@@ -6,12 +6,17 @@
 const CLE_PANIER = "panier_vend_nous_ta_maladie";
 
 export function recupererPanier() {
-  const brut = localStorage.getItem(CLE_PANIER);
-  return brut ? JSON.parse(brut) : [];
+  try {
+    const brut = localStorage.getItem(CLE_PANIER);
+    return brut ? JSON.parse(brut) : [];
+  } catch {
+    return [];
+  }
 }
 
 export function sauvegarderPanier(panier) {
   localStorage.setItem(CLE_PANIER, JSON.stringify(panier));
+  window.dispatchEvent(new Event("panier-maj")); // met à jour la pastille du panier
 }
 
 export function ajouterAuPanier(produit) {
@@ -27,6 +32,7 @@ export function ajouterAuPanier(produit) {
 
 export function viderPanier() {
   localStorage.removeItem(CLE_PANIER);
+  window.dispatchEvent(new Event("panier-maj"));
 }
 
 export function compterArticlesPanier() {

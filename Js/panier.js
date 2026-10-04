@@ -6,6 +6,7 @@ import { db } from "./firebase-config.js";
 import { auth } from "./firebase-config.js";
 import { addDoc, collection } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { recupererProfil } from "./auth.js";
+import { optimiserImage } from "./outils.js";
 import {
   recupererPanier, sauvegarderPanier, viderPanier, compterArticlesPanier
 } from "./panier-utils.js";
@@ -49,7 +50,6 @@ boutonRetour.addEventListener("click", () => {
 
 function afficherPanier() {
   const panier = recupererPanier();
-  document.getElementById("lien-panier").textContent = `Panier (${compterArticlesPanier()})`;
 
   if (panier.length === 0) {
     listeConteneur.innerHTML = `<p style="color:var(--texte-doux);">Ton panier est vide.</p>`;
@@ -70,7 +70,7 @@ function afficherPanier() {
     const ligne = document.createElement("div");
     ligne.className = "ligne-panier";
     ligne.innerHTML = `
-      <img src="${echapper(item.imageUrl)}" alt="${echapper(item.nom)}">
+      <img src="${echapper(optimiserImage(item.imageUrl, 160))}" alt="${echapper(item.nom)}" loading="lazy" decoding="async">
       <div class="infos">
         <strong>${echapper(item.nom)}</strong><br>
         <span style="color:var(--texte-doux); font-size:0.85rem;">${item.prix.toLocaleString("fr-FR")} FCFA</span>

@@ -8,7 +8,9 @@
 // On importe les modules Firebase dont on a besoin (version modulaire v10)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import {
+  getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
 
 // mes propres identifiants Firebase
@@ -26,5 +28,15 @@ const app = initializeApp(firebaseConfig);
 
 // On exporte auth et db pour les utiliser dans les autres fichiers JS
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Base de données avec mémoire sur l'appareil : les données déjà vues restent
+// disponibles sans connexion, et les écritures attendent le retour du réseau.
+let baseDeDonnees;
+try {
+  baseDeDonnees = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+} catch (e) {
+  baseDeDonnees = getFirestore(app);
+}
+export const db = baseDeDonnees;
 export const storage = getStorage(app);

@@ -3,6 +3,7 @@
 // ===========================================================
 
 import { db } from "./firebase-config.js";
+import { optimiserImage } from "./outils.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const parametres = new URLSearchParams(window.location.search);
@@ -33,7 +34,7 @@ async function afficherArticle() {
     const image = String(article.imageUrl || "");
     document.title = `${article.titre} — Vend Nous Ta Maladie`;
     conteneur.innerHTML = `
-      ${image.startsWith("https://") ? `<img src="${echapper(image)}" alt="${echapper(article.titre)}">` : ""}
+      ${image.startsWith("https://") ? `<img src="${echapper(optimiserImage(image, 900))}" decoding="async" alt="${echapper(article.titre)}">` : ""}
       <h1>${echapper(article.titre)}</h1>
       <p style="color:var(--texte-doux); margin-bottom:20px;">Par ${echapper(article.auteurNom)}</p>
       <p>${echapper(article.contenu).replace(/\n/g, "<br>")}</p>

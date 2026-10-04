@@ -5,8 +5,11 @@
 
 import { db } from "./firebase-config.js";
 import { recupererProfil, surChangementAuth } from "./auth.js";
+import { ouvrirCommandeRapide } from "./commande-rapide.js";
+import { optimiserImage, afficherToast } from "./outils.js";
+import { ajouterAuPanier } from "./panier-utils.js";
 import {
-  collection, addDoc, query, where, getDocs, orderBy, doc, deleteDoc
+  collection, addDoc, query, where, getDocs, orderBy, limit, doc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const blocPublier = document.getElementById("bloc-publier-produit");
@@ -133,16 +136,38 @@ if (grilleAccueil) {
   chargerTousLesProduits();
 }
 
-async function chargerTousLesProduits() {
-  const q = query(collection(db, "produits"), orderBy("dateCreation", "desc"));
-  const resultats = await getDocs(q);
+const CLE_CACHE_PRODUITS = "cache_produits_vntm";
 
-  if (resultats.empty) return; // on laisse les cartes d'exemple si aucun produit réel
-
+function dessinerProduits(liste) {
   grilleAccueil.innerHTML = "";
-  resultats.forEach((docSnap) => {
-    grilleAccueil.appendChild(carteProduit(docSnap.id, docSnap.data()));
-  });
+  liste.forEach((p) => grilleAccueil.appendChild(carteProduit(p.id, p)));
+}
+
+async function chargerTousLesProduits() {
+  // 1) Affichage instantané avec les produits déjà vus sur cet appareil
+  try {
+    const memoire = JSON.parse(localStorage.getItem(CLE_CACHE_PRODUITS));
+    if (Array.isArray(memoire) && memoire.length) dessinerProduits(memoire);
+  } catch {}
+
+  // 2) Mise à jour avec les données fraîches (24 produits maximum = chargement léger)
+  try {
+    const q = query(collection(db, "produits"), orderBy("dateCreation", "desc"), limit(24));
+    const resultats = await getDocs(q);
+    if (resultats.empty) return; // on laisse les cartes d'exemple si aucun produit réel
+
+    const liste = resultats.docs.map((d) => {
+      const x = d.data();
+      return {
+        id: d.id, nom: x.nom, prix: x.prix, imageUrl: x.imageUrl,
+        vendeurUid: x.vendeurUid, vendeurNom: x.vendeurNom
+      };
+    });
+    dessinerProduits(liste);
+    try { localStorage.setItem(CLE_CACHE_PRODUITS, JSON.stringify(liste)); } catch {}
+  } catch (err) {
+    console.error("Erreur chargement produits :", err);
+  }
 }
 
 // Construit une carte produit avec image et lien vers la fiche détaillée
@@ -151,13 +176,46 @@ function carteProduit(id, produit, supprimable = false) {
   carte.className = "carte-produit";
   carte.innerHTML = `
     <a href="/produit.html?id=${encodeURIComponent(id)}" style="text-decoration:none; color:inherit;">
-      <img src="${echapper(produit.imageUrl)}" alt="${echapper(produit.nom)}" style="width:100%; height:140px; object-fit:cover; border-radius:6px; margin-bottom:10px;">
+      <img src="${echapper(optimiserImage(produit.imageUrl, 400))}" alt="${echapper(produit.nom)}" loading="lazy" decoding="async" style="width:100%; height:140px; object-fit:cover; border-radius:6px; margin-bottom:10px;">
       <h3>${echapper(produit.nom)}</h3>
       <p class="prix">${Number(produit.prix || 0).toLocaleString("fr-FR")} FCFA</p>
       <p class="vendeur">Vendu par ${echapper(produit.vendeurNom)}</p>
     </a>
-    <a href="/produit.html?id=${encodeURIComponent(id)}" class="bouton petit" style="display:inline-block; margin-top:10px;">Voir plus</a>
+    <div class="actions-carte">
+      <a href="/produit.html?id=${encodeURIComponent(id)}" class="bouton petit">Voir plus</a>
+    </div>
   `;
+
+  // Boutons d'achat (accueil uniquement, pas dans « Mes produits »)
+  if (!supprimable) {
+    const actions = carte.querySelector(".actions-carte");
+    const infosProduit = {
+      produitId: id,
+      nom: produit.nom,
+      prix: Number(produit.prix || 0),
+      imageUrl: produit.imageUrl,
+      vendeurUid: produit.vendeurUid,
+      vendeurNom: produit.vendeurNom
+    };
+
+    const boutonCommander = document.createElement("button");
+    boutonCommander.type = "button";
+    boutonCommander.className = "bouton petit bouton-commander";
+    boutonCommander.textContent = "Commander";
+    boutonCommander.addEventListener("click", () => ouvrirCommandeRapide(infosProduit));
+
+    const boutonPanier = document.createElement("button");
+    boutonPanier.type = "button";
+    boutonPanier.className = "bouton petit secondaire";
+    boutonPanier.textContent = "🛒 Ajouter";
+    boutonPanier.addEventListener("click", () => {
+      ajouterAuPanier(infosProduit);
+      afficherToast("Ajouté au panier ✓");
+    });
+
+    actions.appendChild(boutonCommander);
+    actions.appendChild(boutonPanier);
+  }
 
   // Bouton Supprimer : uniquement dans « Mes produits » du vendeur
   if (supprimable) {

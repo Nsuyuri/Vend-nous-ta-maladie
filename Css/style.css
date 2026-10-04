@@ -257,6 +257,31 @@ footer{ text-align:center; padding: 24px 20px; color: var(--texte-doux); font-si
 }
 .contenu-article img{ border-radius: var(--rayon); margin-bottom: 18px; max-height:360px; object-fit:cover; width:100%; }
 
-@media (max-width: 600px){
-  .nav{ flex-direction:column; align-items:flex-start; }
+/* ---------- Menu hamburger + icônes ---------- */
+.nav{ position: relative; }
+.menu-bouton{
+  display:none; background:none; border:0; color: var(--parchemin);
+  font-size:1.7rem; line-height:1; cursor:pointer; padding:4px 8px;
+}
+.lien-accueil-menu{ display:none; }
+.nav-liens a::before{ margin-right:6px; }
+.nav-liens a[href*="#marketplace"]::before{ content:"🌿"; }
+.nav-liens a[href="blog.html"]::before{ content:"📖"; }
+.nav-liens a[href="panier.html"]::before{ content:"🛒"; }
+.nav-liens a[href="profil.html"]::before{ content:"👤"; }
+.lien-accueil-menu::before{ content:"🏠"; }
+
+@media (max-width: 700px){
+  .nav{ flex-wrap:nowrap; padding:10px 16px; }
+  .nav .logo{ font-size:1.1rem; }
+  .menu-bouton{ display:block; }
+  .nav-liens{
+    display:none; position:absolute; top:100%; left:0; right:0; z-index:50;
+    flex-direction:column; gap:0; padding:4px 0 8px;
+    background: var(--vert-feuille);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+  }
+  .nav-liens.ouvert{ display:flex; }
+  .nav-liens a{ padding:13px 20px; font-size:1.05rem; border-top:1px solid rgba(250,246,236,0.12); }
+  .lien-accueil-menu{ display:block; }
 }

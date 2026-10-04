@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin — Vend Nous Ta Maladie</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="logo">Vend Nous <span>Ta Maladie</span></a>
+  <div class="nav-liens">
+    <a href="index.html">Site</a>
+    <a href="profil.html">Profil</a>
+  </div>
+</nav>
+
+<div class="conteneur section">
+  <h2>Demandes vendeur en attente</h2>
+  <div id="message-admin"></div>
+  <table class="tableau-demandes">
+    <thead>
+      <tr>
+        <th>Nom</th>
+        <th>Spécialité</th>
+        <th>Ancienneté</th>
+        <th>Téléphone</th>
+        <th>Position</th>
+        <th>Description</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="corps-tableau">
+      <!-- Rempli dynamiquement -->
+    </tbody>
+  </table>
+
+  <h2 style="margin-top:40px;">Articles en attente</h2>
+  <table class="tableau-demandes">
+    <thead>
+      <tr>
+        <th>Titre</th>
+        <th>Auteur</th>
+        <th>Contenu</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="corps-tableau-articles">
+      <!-- Rempli dynamiquement -->
+    </tbody>
+  </table>
+</div>
+
+<footer>© 2026 Vend Nous Ta Maladie — Espace admin</footer>
+
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panier — Vend Nous Ta Maladie</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="logo">Vend Nous <span>Ta Maladie</span></a>
+  <div class="nav-liens">
+    <a href="index.html#marketplace">Marketplace</a>
+    <a href="blog.html">Blog</a>
+    <a href="panier.html" id="lien-panier">Panier</a>
+    <a href="profil.html">Profil</a>
+  </div>
+</nav>
+
+<div class="conteneur section">
+  <h2>Mon panier</h2>
+  <p id="indicateur-etape" style="color:var(--texte-doux); margin-top:4px; display:none;"></p>
+  <div id="message-panier"></div>
+
+  <div id="liste-panier"><!-- rempli par panier.js --></div>
+  <p class="total-panier" id="total-panier"></p>
+  <button type="button" class="bouton" id="bouton-continuer" style="margin:12px 0 24px; display:none;">Continuer vers la livraison</button>
+
+  <div class="carte-profil" id="bloc-commande" style="max-width:100%;">
+    <h2>Finaliser la commande</h2>
+    <p style="color:var(--texte-doux); margin:8px 0 20px;">
+      Tu paies uniquement à la réception de ta commande. Le vendeur te contactera pour organiser la livraison.
+    </p>
+    <form id="form-commande">
+      <div class="champ">
+        <label for="commande-nom">Nom complet</label>
+        <input type="text" id="commande-nom" required>
+      </div>
+      <div class="champ">
+        <label for="commande-telephone">Téléphone</label>
+        <input type="tel" id="commande-telephone" required>
+      </div>
+      <div class="champ">
+        <label for="commande-quartier">Ville / Quartier de livraison</label>
+        <input type="text" id="commande-quartier" required>
+      </div>
+      <div class="champ">
+        <label>Comment le vendeur peut-il te contacter ?</label>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+          <label style="font-weight:400;"><input type="radio" name="commande-contact" value="les_deux" checked style="width:auto; margin-right:8px;">Appel téléphonique et WhatsApp</label>
+          <label style="font-weight:400;"><input type="radio" name="commande-contact" value="appel" style="width:auto; margin-right:8px;">Appel téléphonique uniquement</label>
+          <label style="font-weight:400;"><input type="radio" name="commande-contact" value="whatsapp" style="width:auto; margin-right:8px;">WhatsApp uniquement</label>
+        </div>
+      </div>
+      <button type="button" class="bouton secondaire" id="bouton-retour">Retour au panier</button>
+      <button type="submit" class="bouton" id="bouton-commander">Confirmer la commande</button>
+    </form>
+  </div>
+</div>
+
+<footer>© 2026 Vend Nous Ta Maladie</footer>
+
+<script type="module" src="/js/panier.js"></script>
+</body>
+</html>

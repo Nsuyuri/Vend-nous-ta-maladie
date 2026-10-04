@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mon profil — Vend Nous Ta Maladie</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="logo">Vend Nous <span>Ta Maladie</span></a>
+  <div class="nav-liens">
+    <a href="index.html#marketplace">Marketplace</a>
+    <a href="blog.html">Blog</a>
+    <a href="panier.html">Panier</a>
+    <a href="profil.html">Profil</a>
+  </div>
+</nav>
+
+<div class="conteneur">
+
+  <!-- ===== Bloc visible seulement si PAS connecté ===== -->
+  <div id="bloc-auth" class="carte-profil" style="display:none;">
+    <h2 id="titre-auth">Connexion</h2>
+    <div id="message-auth"></div>
+
+    <form id="form-connexion">
+      <div class="champ">
+        <label for="email-connexion">Email</label>
+        <input type="email" id="email-connexion" placeholder="Ex. koffi.tra@gmail.com" required>
+      </div>
+      <div class="champ">
+        <label for="mdp-connexion">Mot de passe</label>
+        <div style="position:relative;">
+          <input type="password" id="mdp-connexion" placeholder="Ex. MonMotDePasse123" required style="width:100%; padding-right:44px;">
+          <button type="button" class="bouton-oeil" data-cible="mdp-connexion" aria-label="Afficher le mot de passe" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1rem;">👁️</button>
+        </div>
+      </div>
+      <button type="submit" class="bouton">Se connecter</button>
+    </form>
+
+    <form id="form-inscription" style="display:none;">
+      <div class="champ">
+        <label for="nom-inscription">Nom complet</label>
+        <input type="text" id="nom-inscription" placeholder="Ex. Koffi Traoré" required>
+      </div>
+      <div class="champ">
+        <label for="email-inscription">Email</label>
+        <input type="email" id="email-inscription" placeholder="Ex. koffi.tra@gmail.com" required>
+      </div>
+      <div class="champ">
+        <label for="mdp-inscription">Mot de passe</label>
+        <div style="position:relative;">
+          <input type="password" id="mdp-inscription" placeholder="Ex. MonMotDePasse123" required minlength="6" style="width:100%; padding-right:44px;">
+          <button type="button" class="bouton-oeil" data-cible="mdp-inscription" aria-label="Afficher le mot de passe" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1rem;">👁️</button>
+        </div>
+        <small>6 caractères minimum</small>
+      </div>
+      <button type="submit" class="bouton">Créer mon compte</button>
+    </form>
+
+    <p style="margin-top:16px; font-size:0.9rem;">
+      <a href="#" id="lien-basculer">Pas encore de compte ? Inscris-toi</a>
+    </p>
+  </div>
+
+  <!-- ===== Bloc visible seulement si connecté ===== -->
+  <div id="bloc-profil" style="display:none;">
+
+    <div class="carte-profil">
+      <div class="avatar" id="avatar-initiale"></div>
+      <label class="bouton secondaire petit" for="photo-profil" style="cursor:pointer; display:inline-block; margin-bottom:10px;">Changer ma photo</label>
+      <input type="file" id="photo-profil" accept="image/*" style="display:none;">
+      <div id="message-photo"></div>
+      <h2 id="profil-nom"></h2>
+      <p id="profil-email" style="color:var(--texte-doux);"></p>
+      <p style="margin-top:10px;">Statut : <span class="statut-badge" id="badge-statut"></span></p>
+      <button class="bouton secondaire" id="bouton-deconnexion" style="margin-top:18px;">Se déconnecter</button>
+    </div>
+
+    <!-- Section "devenir vendeur" -->
+    <div class="carte-profil" id="bloc-devenir-vendeur">
+      <h2>Devenir vendeur</h2>
+      <p style="color:var(--texte-doux); margin: 8px 0 20px;">
+        Ta demande sera examinée par l'équipe avant validation.
+      </p>
+      <div id="message-demande"></div>
+
+      <form id="form-demande-vendeur">
+        <div class="champ">
+          <label for="specialite">Spécialité</label>
+          <input type="text" id="specialite" placeholder="Ex. plantes anti-paludiques, tradithérapie..." required>
+        </div>
+
+        <div class="champ">
+          <label for="anciennete">Ancienneté dans le domaine (en années)</label>
+          <input type="number" id="anciennete" min="1" max="99" step="1" placeholder="Ex. 12" required>
+          <small>Indique ton nombre d'années d'expérience réel — l'équipe vérifie chaque demande avant validation.</small>
+        </div>
+
+        <div class="champ">
+          <label for="telephone-demande">Numéro de téléphone</label>
+          <input type="tel" id="telephone-demande" placeholder="Ex. 07 00 00 00 00" required>
+        </div>
+
+        <div class="champ">
+          <label>Localisation</label>
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <button type="button" class="bouton secondaire" id="bouton-mode-manuel" data-mode="manuel">✍️ Saisir manuellement</button>
+            <button type="button" class="bouton secondaire" id="bouton-mode-gps" data-mode="gps">📍 Utiliser le GPS</button>
+          </div>
+
+          <div id="bloc-localisation-manuelle">
+            <input type="text" id="localisation-texte" placeholder="Ex. Cocody, Angré 8e Tranche, Abidjan">
+          </div>
+
+          <div id="bloc-localisation-gps" style="display:none;">
+            <button type="button" class="bouton secondaire" id="bouton-position">📍 Utiliser ma position actuelle</button>
+            <p id="position-resultat" style="font-size:0.85rem; color:var(--texte-doux); margin-top:8px;"></p>
+          </div>
+
+          <input type="hidden" id="position-lat">
+          <input type="hidden" id="position-lng">
+        </div>
+
+        <div class="champ">
+          <label for="description-demande">Décris ton activité</label>
+          <textarea id="description-demande" rows="4" required></textarea>
+        </div>
+
+        <div class="champ">
+          <label style="display:flex; gap:10px; align-items:flex-start; font-weight:400; cursor:pointer;">
+            <input type="checkbox" id="accepte-responsabilite" required style="width:auto; margin-top:3px;">
+            <span>Je reconnais être seul(e) responsable des produits que je vends (qualité, composition, effets) et de toute plainte de client ou tout problème juridique qui en découlerait. Vend Nous Ta Maladie est uniquement une plateforme de mise en relation et ne peut en aucun cas en être tenue responsable.</span>
+          </label>
+        </div>
+
+        <button type="submit" class="bouton" id="bouton-envoyer-demande">Envoyer ma demande</button>
+      </form>
+    </div>
+
+    <!-- Section "publier un produit" — visible seulement pour un vendeur validé -->
+    <div class="carte-profil" id="bloc-publier-produit" style="display:none;">
+      <h2>Ajouter un produit</h2>
+      <div id="message-produit"></div>
+
+      <form id="form-produit">
+        <div class="champ">
+          <label for="produit-nom">Nom du produit</label>
+          <input type="text" id="produit-nom" required>
+        </div>
+        <div class="rangee">
+          <div class="champ">
+            <label for="produit-prix">Prix (FCFA)</label>
+            <input type="number" id="produit-prix" min="0" required>
+          </div>
+          <div class="champ">
+            <label for="produit-categorie">Catégorie</label>
+            <select id="produit-categorie" required>
+              <option value="">Choisir...</option>
+              <option>Sirop</option>
+              <option>Tisane</option>
+              <option>Décoction</option>
+              <option>Baume</option>
+              <option>Pommade</option>
+              <option>Huile</option>
+              <option>Poudre</option>
+              <option>Écorces et racines</option>
+              <option>Feuilles et plantes séchées</option>
+              <option>Miel et produits de la ruche</option>
+              <option>Savon naturel</option>
+              <option>Compléments naturels</option>
+              <option>Autre</option>
+            </select>
+          </div>
+        </div>
+        <div class="champ">
+          <label for="produit-description">Description</label>
+          <textarea id="produit-description" rows="2" required></textarea>
+        </div>
+        <div class="champ">
+          <label for="produit-composition">Composition / contenu</label>
+          <textarea id="produit-composition" rows="2" placeholder="Ex. Écorce de quinquina, miel, gingembre"></textarea>
+        </div>
+        <div class="champ">
+          <label for="produit-image">Photo du produit</label>
+          <input type="file" id="produit-image" accept="image/*" required>
+          <small>JPG ou PNG, moins de 2 Mo</small>
+        </div>
+        <div class="champ">
+          <label for="produit-mode-emploi">Mode d'emploi</label>
+          <textarea id="produit-mode-emploi" rows="2" required placeholder="Ex. 1 cuillère à soupe, matin et soir, avant le repas"></textarea>
+        </div>
+        <div class="champ">
+          <label for="produit-effets-secondaires">Effets secondaires (optionnel)</label>
+          <textarea id="produit-effets-secondaires" rows="2"></textarea>
+        </div>
+        <button type="submit" class="bouton" id="bouton-publier-produit">Publier</button>
+      </form>
+
+      <h3 style="margin-top:28px;">Mes produits publiés</h3>
+      <div class="grille-produits" id="grille-mes-produits" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- Section "mes commandes" — en tant qu'acheteur -->
+    <div class="carte-profil">
+      <h2>Mes commandes</h2>
+      <div id="liste-mes-commandes" style="margin-top:10px; color:var(--texte-doux);">Chargement...</div>
+    </div>
+
+    <!-- Section "commandes reçues" — visible seulement pour un vendeur validé -->
+    <div class="carte-profil" id="bloc-commandes-recues" style="display:none;">
+      <h2>Commandes reçues</h2>
+      <div id="liste-commandes-recues" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- Section "écrire un article" — placée tout en bas du profil -->
+    <div class="carte-profil">
+      <h2>Écrire un article</h2>
+      <div id="message-article-profil"></div>
+      <form id="form-article">
+        <div class="champ">
+          <label for="article-titre">Titre</label>
+          <input type="text" id="article-titre" required>
+        </div>
+        <div class="champ">
+          <label for="article-image">Image (optionnelle)</label>
+          <input type="file" id="article-image" accept="image/*">
+        </div>
+        <div class="champ">
+          <label for="article-contenu">Contenu</label>
+          <textarea id="article-contenu" rows="6" required></textarea>
+        </div>
+        <button type="submit" class="bouton" id="bouton-publier-article">Soumettre à validation</button>
+      </form>
+      <h3 style="margin-top:24px;">Mes articles</h3>
+      <div id="liste-mes-articles" style="margin-top:10px;"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>© 2026 Vend Nous Ta Maladie</footer>
+<script type="module" src="js/profil.js"></script>
+<script type="module" src="js/ecrire-article.js"></script>
+<script type="module" src="js/commandes-profil.js"></script>
+<script type="module" src="js/produits.js"></script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vend Nous Ta Maladie</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="logo">Vend Nous <span>Ta Maladie</span></a>
+  <div class="nav-liens">
+    <a href="index.html#marketplace">Marketplace</a>
+    <a href="blog.html">Blog</a>
+    <a href="panier.html" id="lien-panier">Panier (0)</a>
+    <a href="profil.html" id="lien-profil">Profil</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <h1>Retrouve le chemin d'une santé naturelle</h1>
+  <p>Les plantes, les racines et les savoirs de nos ancêtres prennent soin de nous depuis toujours. Offre à ton corps et à ta famille le meilleur de la nature, choisi avec soin par des vendeurs vérifiés.</p>
+  <a href="#marketplace" class="bouton">Découvrir les remèdes naturels</a>
+</section>
+
+<div class="conteneur section" id="marketplace">
+  <h2>Marketplace</h2>
+  <p style="color:var(--texte-doux); margin-top:6px;">Les produits publiés par les vendeurs validés s'afficheront ici.</p>
+  <div class="grille-produits" id="grille-produits">
+    <!-- Exemple statique en attendant la connexion Firestore des produits -->
+    <div class="carte-produit">
+      <h3>Écorce de kinkéliba</h3>
+      <p class="prix">2 000 FCFA</p>
+      <p class="vendeur">Vendu par Adjoua K.</p>
+    </div>
+    <div class="carte-produit">
+      <h3>Tisane anti-paludisme</h3>
+      <p class="prix">3 500 FCFA</p>
+      <p class="vendeur">Vendu par Koffi T.</p>
+    </div>
+  </div>
+</div>
+
+<div class="conteneur section" id="blog">
+  <h2>Blog</h2>
+  <p style="color:var(--texte-doux); margin-top:6px;">Articles écrits par la communauté, validés par l'équipe.</p>
+  <div class="grille-blog" id="grille-blog"><!-- derniers articles, chargés ci-dessous --></div>
+  <p style="margin-top:16px;"><a href="blog.html">Voir tous les articles →</a></p>
+</div>
+
+<footer>© 2026 Vend Nous Ta Maladie</footer>
+
+<script type="module">
+  import { auth } from "./js/firebase-config.js";
+  import { surChangementAuth } from "./js/auth.js";
+
+  // Adapte le lien "Profil" selon que l'utilisateur est connecté ou non
+  surChangementAuth((utilisateur) => {
+    const lienProfil = document.getElementById("lien-profil");
+    lienProfil.textContent = utilisateur ? "Mon profil" : "Connexion";
+  });
+</script>
+<script type="module">
+  import { compterArticlesPanier } from "./js/panier-utils.js";
+  document.getElementById("lien-panier").textContent = `Panier (${compterArticlesPanier()})`;
+</script>
+<script type="module">
+  // Derniers articles publiés (3 maximum), cliquables
+  import { db } from "./js/firebase-config.js";
+  import { collection, query, where, getDocs }
+    from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const grilleBlog = document.getElementById("grille-blog");
+  const esc = (t) => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+  try {
+    const res = await getDocs(query(collection(db, "articles"), where("statut", "==", "publie")));
+    const articles = res.docs.map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => String(b.dateCreation || "").localeCompare(String(a.dateCreation || "")))
+      .slice(0, 3);
+    if (articles.length === 0) {
+      grilleBlog.innerHTML = `<p style="color:var(--texte-doux);">Aucun article publié pour l'instant.</p>`;
+    } else {
+      grilleBlog.innerHTML = "";
+      articles.forEach((a) => {
+        const carte = document.createElement("a");
+        carte.href = `/article.html?id=${encodeURIComponent(a.id)}`;
+        carte.className = "carte-article";
+        carte.innerHTML = `
+          <h3>${esc(a.titre)}</h3>
+          <p class="meta">Par ${esc(a.auteurNom)}</p>
+          <p>${esc(String(a.contenu || "").slice(0, 120))}...</p>
+          <span class="lire-suite">Lire l'article →</span>`;
+        grilleBlog.appendChild(carte);
+      });
+    }
+  } catch (err) {
+    console.error("Erreur blog accueil :", err);
+    grilleBlog.innerHTML = "";
+  }
+</script>
+<script type="module" src="/js/produits.js"></script>
+</body>
+</html>

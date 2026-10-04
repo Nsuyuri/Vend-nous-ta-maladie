@@ -64,12 +64,11 @@
   // Adapte le lien "Profil" selon que l'utilisateur est connecté ou non
   surChangementAuth((utilisateur) => {
     const lienProfil = document.getElementById("lien-profil");
-    lienProfil.textContent = utilisateur ? "Mon profil" : "Connexion";
+    // Icône seule : on change juste l'info-bulle, pas le contenu
+    const nom = utilisateur ? "Mon profil" : "Connexion";
+    lienProfil.setAttribute("aria-label", nom);
+    lienProfil.title = nom;
   });
-</script>
-<script type="module">
-  import { compterArticlesPanier } from "./js/panier-utils.js";
-  document.getElementById("lien-panier").textContent = `Panier (${compterArticlesPanier()})`;
 </script>
 <script type="module">
   // Derniers articles publiés (3 maximum), cliquables

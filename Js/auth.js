@@ -11,7 +11,7 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
-  doc, setDoc, getDoc
+  doc, setDoc, getDoc, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // Crée un compte + un document utilisateur dans Firestore
@@ -42,8 +42,35 @@ export async function deconnexion() {
 
 // Récupère le document Firestore correspondant à l'utilisateur connecté
 export async function recupererProfil(uid) {
-  const snap = await getDoc(doc(db, "utilisateurs", uid));
-  return snap.exists() ? snap.data() : null;
+  const ref = doc(db, "utilisateurs", uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return snap.data();
+
+  // Profil absent (ex. supprimé par erreur dans Firestore) : on le recrée
+  // pour l'utilisateur connecté, avec le rôle le plus prudent (acheteur).
+  const u = auth.currentUser;
+  if (!u || u.uid !== uid) return null;
+
+  const profil = {
+    nom: u.displayName || (u.email ? u.email.split("@")[0] : "Utilisateur"),
+    email: u.email || "",
+    role: "acheteur",
+    statutVendeur: "aucun",
+    dateCreation: new Date().toISOString()
+  };
+  try {
+    // Transaction : ne crée le profil que s'il n'existe toujours pas
+    // (évite d'écraser un profil qui viendrait d'être créé à l'inscription).
+    await runTransaction(db, async (t) => {
+      const verif = await t.get(ref);
+      if (!verif.exists()) t.set(ref, profil);
+    });
+    const apres = await getDoc(ref);
+    return apres.exists() ? apres.data() : profil;
+  } catch (e) {
+    console.error("Impossible de recréer le profil :", e);
+    return profil;
+  }
 }
 
 // Écoute les changements de connexion (appelée sur chaque page)

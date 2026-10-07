@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Devenir vendeur</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,sans-serif;background:#f3f7f1;color:#1d2b1f;display:flex;justify-content:center;padding:20px}
+  .box{width:100%;max-width:380px;background:#fff;border-radius:14px;padding:22px;box-shadow:0 2px 12px #0001}
+  h1{font-size:1.3rem;margin:0 0 6px;text-align:center}
+  p.sub{margin:0 0 10px;text-align:center;color:#5d6e5a;font-size:.9rem}
+  label{display:block;font-size:.9rem;margin:14px 0 4px}
+  select{width:100%;padding:12px;border:1px solid #c5d3c1;border-radius:8px;font-size:1rem;background:#fff}
+  input[type=text],input[type=tel],input[type=number]{width:100%;padding:12px;border:1px solid #c5d3c1;border-radius:8px;font-size:1rem}
+  .check{display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-size:.88rem}
+  .check input{margin-top:3px;width:18px;height:18px;flex:none}
+  .main{width:100%;margin-top:18px;padding:13px;border:0;border-radius:8px;background:#2f7d3b;color:#fff;font-size:1rem;cursor:pointer}
+  .main:disabled{opacity:.6}
+  #msg{font-size:.9rem;margin-top:12px;min-height:1.2em;color:#b3261e}
+  #msg.ok{color:#2f7d3b}
+  #form{display:none}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Devenir vendeur</h1>
+  <p class="sub">3 informations suffisent. Nous vérifions ensuite ta demande.</p>
+
+  <div id="deja" style="display:none;text-align:center;margin-top:16px"></div>
+
+  <div id="form">
+    <label for="region">Ta région</label>
+    <select id="region"><option value="">Choisir…</option></select>
+
+    <label for="lieu">Ta ville ou ton quartier</label>
+    <input id="lieu" type="text" placeholder="Ex : Yopougon, Selmer" autocomplete="street-address">
+
+    <label for="tel">Ton numéro (appel ou WhatsApp)</label>
+    <input id="tel" type="tel" placeholder="Ex : 07 00 00 00 00" autocomplete="tel">
+
+    <label for="exp">Années d'expérience (facultatif)</label>
+    <input id="exp" type="number" min="0" max="60" inputmode="numeric" placeholder="Ex : 7">
+
+    <label class="check">
+      <input id="resp" type="checkbox">
+      <span>Je suis responsable de mes produits et de leur vente (plaintes des clients, problèmes juridiques).</span>
+    </label>
+
+    <button id="envoyer" class="main" type="button">Envoyer ma demande</button>
+  </div>
+  <div id="msg"></div>
+</div>
+
+<script type="module">
+import { auth, db } from "./firebase-init.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+import { REGIONS, norm } from "./regions.js";
+
+const COLLECTION = "demandesVendeur"; // change si ta collection a un autre nom
+const $ = id => document.getElementById(id);
+let user = null;
+
+REGIONS.forEach(r => { const o = document.createElement("option"); o.value = o.textContent = r; $("region").appendChild(o); });
+
+onAuthStateChanged(auth, async u => {
+  if (!u) { location.href = "connexion.html"; return; }
+  user = u;
+  try {
+    const snap = await getDoc(doc(db, COLLECTION, u.uid));
+    if (snap.exists()) {
+      const s = snap.data().statut;
+      $("deja").style.display = "block";
+      $("deja").textContent = s === "valide" ? "Tu es déjà vendeur."
+        : s === "refuse" ? "Ta demande a été refusée."
+        : "Ta demande est en attente de vérification.";
+      return;
+    }
+  } catch (e) { /* si la lecture est refusée, on affiche quand même le formulaire */ }
+  $("form").style.display = "block";
+});
+
+$("envoyer").onclick = async () => {
+  const lieu = $("lieu").value.trim();
+  const tel = $("tel").value.replace(/[\s.\-()]/g, "");
+  const exp = $("exp").value.trim();
+  const msg = $("msg");
+  msg.className = ""; msg.textContent = "";
+
+  const region = $("region").value;
+  if (!region) { msg.textContent = "Choisis ta région."; return; }
+  if (!lieu) { msg.textContent = "Indique ta ville ou ton quartier."; return; }
+  if (!/^\+?\d{8,15}$/.test(tel)) { msg.textContent = "Numéro invalide."; return; }
+  if (!$("resp").checked) { msg.textContent = "Coche la case de responsabilité."; return; }
+
+  $("envoyer").disabled = true;
+  try {
+    await setDoc(doc(db, COLLECTION, user.uid), {
+      uid: user.uid,
+      nom: user.displayName || "",
+      region,
+      lieu,
+      lieuRecherche: norm(lieu + " " + region),
+      telephone: tel,
+      experience: exp === "" ? null : Number(exp),
+      responsabilite: true,
+      statut: "en_attente",
+      date: serverTimestamp()
+    });
+    $("form").style.display = "none";
+    $("deja").style.display = "block";
+    $("deja").textContent = "Demande envoyée. Tu seras prévenu après vérification.";
+  } catch (e) {
+    msg.textContent = e.code === "permission-denied"
+      ? "Envoi refusé : vérifie les règles Firestore."
+      : "Erreur : " + (e.message || e.code);
+    $("envoyer").disabled = false;
+  }
+};
+</script>
+</body>
+</html>

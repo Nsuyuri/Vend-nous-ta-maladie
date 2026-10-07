@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trouver près de chez moi</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,sans-serif;background:#f3f7f1;color:#1d2b1f;padding:16px}
+  .wrap{max-width:560px;margin:0 auto}
+  h1{font-size:1.25rem;margin:0 0 12px}
+  .bar{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 12px #0001;display:grid;gap:10px}
+  input,select{width:100%;padding:12px;border:1px solid #c5d3c1;border-radius:8px;font-size:1rem;background:#fff}
+  #count{margin:14px 2px 8px;font-size:.9rem;color:#5d6e5a}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  .card{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px #0001}
+  .card img{width:100%;height:120px;object-fit:cover;background:#e6eee3;display:block}
+  .card div{padding:10px}
+  .card b{display:block;font-size:.98rem}
+  .card span{display:block;font-size:.82rem;color:#5d6e5a;margin-top:3px}
+  .vide{text-align:center;color:#5d6e5a;padding:30px 10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Trouver un produit près de chez moi</h1>
+
+  <div class="bar">
+    <input id="q" type="search" placeholder="Ville, quartier ou région. Ex : Bouaké, Yopougon" autocomplete="off">
+    <select id="region"><option value="">Toutes les régions</option></select>
+    <input id="mot" type="search" placeholder="Produit (facultatif). Ex : sirop, baume" autocomplete="off">
+  </div>
+
+  <div id="count"></div>
+  <div id="liste" class="grid"></div>
+</div>
+
+<script type="module">
+import { db } from "./firebase-init.js";
+import { collection, getDocs, limit, query } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { REGIONS, norm } from "./regions.js";
+
+// Adapte ces noms à ta base : collection des produits et noms des champs
+const COLLECTION = "produits";
+const F = { nom: "nom", categorie: "categorie", image: "image", lieu: "lieu", region: "region" };
+
+const $ = id => document.getElementById(id);
+REGIONS.forEach(r => { const o = document.createElement("option"); o.value = o.textContent = r; $("region").appendChild(o); });
+
+let produits = [];
+
+function afficher() {
+  const q = norm($("q").value), reg = $("region").value, mot = norm($("mot").value);
+  const res = produits.filter(p => {
+    const lieuTxt = norm((p[F.lieu] || "") + " " + (p[F.region] || ""));
+    if (reg && p[F.region] !== reg) return false;
+    if (q && !lieuTxt.includes(q)) return false;
+    if (mot && !norm((p[F.nom] || "") + " " + (p[F.categorie] || "")).includes(mot)) return false;
+    return true;
+  });
+
+  $("count").textContent = res.length + (res.length > 1 ? " produits trouvés" : " produit trouvé");
+  const liste = $("liste");
+  liste.innerHTML = "";
+  if (!res.length) {
+    liste.innerHTML = '<div class="vide">Aucun produit dans cette zone. Essaie une région plus large.</div>';
+    return;
+  }
+  res.forEach(p => {
+    const a = document.createElement("a");
+    a.className = "card";
+    a.href = "produit.html?id=" + encodeURIComponent(p.id); // adapte à ta page produit
+    a.style.textDecoration = "none"; a.style.color = "inherit";
+    const img = document.createElement("img");
+    img.src = p[F.image] || ""; img.alt = ""; img.loading = "lazy";
+    const d = document.createElement("div");
+    const b = document.createElement("b"); b.textContent = p[F.nom] || "Produit";
+    const c = document.createElement("span"); c.textContent = p[F.categorie] || "";
+    const l = document.createElement("span");
+    l.textContent = [p[F.lieu], p[F.region]].filter(Boolean).join(", ");
+    d.append(b, c, l);
+    a.append(img, d);
+    liste.appendChild(a);
+  });
+}
+
+["q", "mot"].forEach(id => $(id).addEventListener("input", afficher));
+$("region").addEventListener("change", afficher);
+
+try {
+  const snap = await getDocs(query(collection(db, COLLECTION), limit(300)));
+  produits = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  afficher();
+} catch (e) {
+  $("count").textContent = "Impossible de charger les produits.";
+}
+</script>
+</body>
+</html>

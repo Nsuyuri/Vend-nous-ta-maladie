@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connexion</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,sans-serif;background:#f3f7f1;color:#1d2b1f;display:flex;justify-content:center;padding:20px}
+  .box{width:100%;max-width:380px;background:#fff;border-radius:14px;padding:22px;box-shadow:0 2px 12px #0001}
+  h1{font-size:1.3rem;margin:0 0 16px;text-align:center}
+  .tabs{display:flex;gap:6px;margin-bottom:16px}
+  .tabs button{flex:1;padding:10px;border:0;border-radius:8px;background:#e6eee3;font-size:1rem;cursor:pointer}
+  .tabs button.on{background:#2f7d3b;color:#fff}
+  label{display:block;font-size:.9rem;margin:12px 0 4px}
+  input{width:100%;padding:12px;border:1px solid #c5d3c1;border-radius:8px;font-size:1rem}
+  .pw{position:relative}
+  .pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;font-size:1.2rem;cursor:pointer}
+  .main{width:100%;margin-top:18px;padding:13px;border:0;border-radius:8px;background:#2f7d3b;color:#fff;font-size:1rem;cursor:pointer}
+  .sep{text-align:center;color:#7a8a77;margin:18px 0 10px;font-size:.85rem}
+  .alt{width:100%;margin-top:8px;padding:11px;border:1px solid #c5d3c1;border-radius:8px;background:#fff;font-size:.95rem;cursor:pointer}
+  #msg{color:#b3261e;font-size:.9rem;margin-top:12px;min-height:1.2em}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Vend Nous Ta Maladie</h1>
+
+  <div class="tabs">
+    <button id="tabLogin" class="on" type="button">Se connecter</button>
+    <button id="tabSignup" type="button">Créer un compte</button>
+  </div>
+
+  <label for="nom">Nom</label>
+  <input id="nom" type="text" placeholder="Ex : Jean Kouassi" autocomplete="username">
+
+  <label for="mdp">Mot de passe</label>
+  <div class="pw">
+    <input id="mdp" type="password" placeholder="6 caractères minimum" autocomplete="current-password">
+    <button id="eye" type="button" aria-label="Afficher le mot de passe">👁</button>
+  </div>
+
+  <button id="go" class="main" type="button">Se connecter</button>
+  <div id="msg"></div>
+
+  <div class="sep">ou continuer avec</div>
+  <button id="google" class="alt" type="button">Google</button>
+  <button id="facebook" class="alt" type="button">Facebook</button>
+</div>
+
+<script type="module">
+import { auth, db } from "./firebase-init.js";
+import {
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile,
+  signInWithPopup, GoogleAuthProvider, FacebookAuthProvider
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const REDIRECT = "profil.html"; // page où aller après connexion (change si besoin)
+const $ = id => document.getElementById(id);
+let mode = "login";
+
+// Le nom devient un faux e-mail interne (Firebase en exige un). Invisible pour l'utilisateur.
+const clean = s => s.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+const toEmail = nom => clean(nom) + "@vendnoustamaladie.app";
+
+function setMode(m) {
+  mode = m;
+  $("tabLogin").classList.toggle("on", m === "login");
+  $("tabSignup").classList.toggle("on", m === "signup");
+  $("go").textContent = m === "login" ? "Se connecter" : "Créer mon compte";
+  $("mdp").autocomplete = m === "login" ? "current-password" : "new-password";
+  $("msg").textContent = "";
+}
+$("tabLogin").onclick = () => setMode("login");
+$("tabSignup").onclick = () => setMode("signup");
+$("eye").onclick = () => { $("mdp").type = $("mdp").type === "password" ? "text" : "password"; };
+
+function erreur(e) {
+  const c = e.code || "";
+  if (c === "auth/email-already-in-use") return "Ce nom est déjà pris. Ajoute un chiffre (ex : Jean2).";
+  if (c === "auth/weak-password") return "Mot de passe trop court (6 caractères minimum).";
+  if (c === "auth/invalid-credential" || c === "auth/user-not-found" || c === "auth/wrong-password") return "Nom ou mot de passe incorrect.";
+  if (c === "auth/popup-closed-by-user" || c === "auth/cancelled-popup-request") return "";
+  if (c === "auth/network-request-failed") return "Pas de connexion internet.";
+  return "Erreur : " + (e.message || c);
+}
+
+$("go").onclick = async () => {
+  const nom = $("nom").value, mdp = $("mdp").value;
+  if (!clean(nom)) { $("msg").textContent = "Écris ton nom."; return; }
+  if (mdp.length < 6) { $("msg").textContent = "Mot de passe : 6 caractères minimum."; return; }
+  $("go").disabled = true; $("msg").textContent = "";
+  try {
+    if (mode === "signup") {
+      const cred = await createUserWithEmailAndPassword(auth, toEmail(nom), mdp);
+      await updateProfile(cred.user, { displayName: nom.trim() });
+      await setDoc(doc(db, "utilisateurs", cred.user.uid), { nom: nom.trim(), creeLe: serverTimestamp() }, { merge: true });
+    } else {
+      await signInWithEmailAndPassword(auth, toEmail(nom), mdp);
+    }
+    location.href = REDIRECT;
+  } catch (e) { $("msg").textContent = erreur(e); }
+  $("go").disabled = false;
+};
+
+async function social(provider) {
+  $("msg").textContent = "";
+  try {
+    const { user } = await signInWithPopup(auth, provider);
+    const ref = doc(db, "utilisateurs", user.uid);
+    if (!(await getDoc(ref)).exists()) {
+      await setDoc(ref, { nom: user.displayName || "", creeLe: serverTimestamp() });
+    }
+    location.href = REDIRECT;
+  } catch (e) { $("msg").textContent = erreur(e); }
+}
+$("google").onclick = () => social(new GoogleAuthProvider());
+$("facebook").onclick = () => social(new FacebookAuthProvider());
+</script>
+</body>
+</html>

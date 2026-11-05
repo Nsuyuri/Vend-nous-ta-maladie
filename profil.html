@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="gate.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <title>Mon profil — Vend Nous Ta Maladie</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,6 +38,9 @@
       <button type="button" class="bouton petit" id="onglet-nom" style="flex:1;">Nom + code</button>
       <button type="button" class="bouton petit secondaire" id="onglet-email" style="flex:1;">Email</button>
     </div>
+
+    <!-- Vérification anti-robot (Cloudflare Turnstile), partagée par tous les formulaires -->
+    <div id="captcha-box" style="margin-bottom:14px; min-height:65px;"></div>
 
     <!-- Méthode 1 : nom + code simple -->
     <form id="form-nom">
@@ -145,6 +149,14 @@
       <div id="message-photo"></div>
       <h2 id="profil-nom"></h2>
       <p id="profil-email" style="color:var(--texte-doux);"></p>
+      <div id="bloc-ajout-email" style="display:none; margin-top:10px; text-align:left;">
+        <p style="font-size:0.9rem; color:var(--texte-doux);">Ajoute ton email pour pouvoir récupérer ton compte si tu oublies ton code.</p>
+        <div id="message-ajout-email"></div>
+        <form id="form-ajout-email">
+          <input type="email" id="email-ajout" placeholder="Ex. koffi.tra@gmail.com" autocomplete="email" required>
+          <button type="submit" class="bouton petit" style="margin-top:8px;">Ajouter mon email</button>
+        </form>
+      </div>
       <p style="margin-top:10px;">Statut : <span class="statut-badge" id="badge-statut"></span></p>
       <button class="bouton secondaire" id="bouton-deconnexion" style="margin-top:18px;">Se déconnecter</button>
     </div>

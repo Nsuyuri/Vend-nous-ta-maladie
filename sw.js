@@ -15,7 +15,7 @@ const A_GARDER = [
   "/css/style.css", "/manifest.webmanifest", "/icone.svg",
   "/js/menu.js", "/js/outils.js", "/js/supabase-config.js", "/js/auth.js", "/js/produits.js",
   "/js/produit.js", "/js/panier.js", "/js/panier-utils.js", "/js/commande-rapide.js",
-  "/js/blog.js", "/js/article.js", "/js/cloudinary.js", "/js/commandes-profil.js",
+  "/js/blog.js", "/js/article.js", "/js/cloudinary.js", "/js/limites-images.js", "/js/commandes-profil.js",
   "/js/ecrire-article.js", "/js/profil.js", "/js/notifications.js",
   "/conditions.html", "/gate.js"
 ];

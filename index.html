@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="gate.js"></script>
 <title>Vend Nous Ta Maladie</title>
 <link rel="stylesheet" href="/css/style.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#2F5233">
-<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://res.cloudinary.com">
 </head>
 <body>
@@ -55,10 +56,9 @@
   <p style="margin-top:16px;"><a href="blog.html">Voir tous les articles →</a></p>
 </div>
 
-<footer>© 2026 Vend Nous Ta Maladie</footer>
+<footer>© 2026 Vend Nous Ta Maladie · <a href="conditions.html?revoir">Conditions et confidentialité</a></footer>
 
 <script type="module">
-  import { auth } from "./js/firebase-config.js";
   import { surChangementAuth } from "./js/auth.js";
 
   // Adapte le lien "Profil" selon que l'utilisateur est connecté ou non
@@ -72,18 +72,15 @@
 </script>
 <script type="module">
   // Derniers articles publiés (3 maximum), cliquables
-  import { db } from "./js/firebase-config.js";
-  import { collection, query, where, getDocs }
-    from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+  import { sb, ok, camelListe } from "./js/supabase-config.js";
 
   const grilleBlog = document.getElementById("grille-blog");
   const esc = (t) => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 
   try {
-    const res = await getDocs(query(collection(db, "articles"), where("statut", "==", "publie")));
-    const articles = res.docs.map((d) => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => String(b.dateCreation || "").localeCompare(String(a.dateCreation || "")))
-      .slice(0, 3);
+    const articles = camelListe(ok(
+      await sb.from("articles").select("*").eq("statut", "publie").order("date_creation", { ascending: false }).limit(3)
+    ));
     if (articles.length === 0) {
       grilleBlog.innerHTML = `<p style="color:var(--texte-doux);">Aucun article publié pour l'instant.</p>`;
     } else {

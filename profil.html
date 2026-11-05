@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="gate.js"></script>
 <title>Mon profil — Vend Nous Ta Maladie</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#2F5233">
-<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://res.cloudinary.com">
 </head>
 <body>
@@ -31,44 +32,107 @@
     <h2 id="titre-auth">Connexion</h2>
     <div id="message-auth"></div>
 
-    <form id="form-connexion">
+    <!-- Choix de la méthode -->
+    <div style="display:flex; gap:8px; margin-bottom:16px;">
+      <button type="button" class="bouton petit" id="onglet-nom" style="flex:1;">Nom + code</button>
+      <button type="button" class="bouton petit secondaire" id="onglet-email" style="flex:1;">Email</button>
+    </div>
+
+    <!-- Méthode 1 : nom + code simple -->
+    <form id="form-nom">
       <div class="champ">
-        <label for="email-connexion">Email</label>
-        <input type="email" id="email-connexion" placeholder="Ex. koffi.tra@gmail.com" required>
+        <label for="nom-simple">Ton nom</label>
+        <input type="text" id="nom-simple" placeholder="Ex. Koffi" autocomplete="username" required>
       </div>
       <div class="champ">
-        <label for="mdp-connexion">Mot de passe</label>
+        <label for="code-simple">Ton code</label>
         <div style="position:relative;">
-          <input type="password" id="mdp-connexion" placeholder="Ex. MonMotDePasse123" required style="width:100%; padding-right:44px;">
-          <button type="button" class="bouton-oeil" data-cible="mdp-connexion" aria-label="Afficher le mot de passe" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1rem;">👁️</button>
+          <input type="password" id="code-simple" placeholder="Ex. 482915" required minlength="6" style="width:100%; padding-right:44px;">
+          <button type="button" class="bouton-oeil" data-cible="code-simple" aria-label="Afficher le mot de passe" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1rem;">👁️</button>
         </div>
+        <small>6 caractères minimum (par exemple 6 chiffres)</small>
       </div>
-      <button type="submit" class="bouton">Se connecter</button>
+      <button type="submit" class="bouton" id="bouton-nom">Se connecter</button>
     </form>
 
-    <form id="form-inscription" style="display:none;">
-      <div class="champ">
-        <label for="nom-inscription">Nom complet</label>
-        <input type="text" id="nom-inscription" placeholder="Ex. Koffi Traoré" required>
-      </div>
-      <div class="champ">
-        <label for="email-inscription">Email</label>
-        <input type="email" id="email-inscription" placeholder="Ex. koffi.tra@gmail.com" required>
-      </div>
-      <div class="champ">
-        <label for="mdp-inscription">Mot de passe</label>
-        <div style="position:relative;">
-          <input type="password" id="mdp-inscription" placeholder="Ex. MonMotDePasse123" required minlength="6" style="width:100%; padding-right:44px;">
-          <button type="button" class="bouton-oeil" data-cible="mdp-inscription" aria-label="Afficher le mot de passe" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1rem;">👁️</button>
+    <!-- Méthode 2 : email + mot de passe -->
+    <div id="bloc-email" style="display:none;">
+      <form id="form-connexion">
+        <div class="champ">
+          <label for="email-connexion">Email</label>
+          <input type="email" id="email-connexion" placeholder="Ex. koffi.tra@gmail.com" autocomplete="email" required>
         </div>
-        <small>6 caractères minimum</small>
+        <div class="champ">
+          <label for="mdp-connexion">Mot de passe</label>
+          <div style="position:relative;">
+            <input type="password" id="mdp-connexion" placeholder="Ex. MonMotDePasse123" autocomplete="current-password" required style="width:100%; padding-right:44px;">
+            <button type="button" class="bouton-oeil" data-cible="mdp-connexion" aria-label="Afficher le mot de passe" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1rem;">👁️</button>
+          </div>
+        </div>
+        <button type="submit" class="bouton">Se connecter</button>
+        <p style="margin-top:12px; font-size:0.9rem;"><a href="#" id="lien-oubli">Mot de passe oublié ?</a></p>
+      </form>
+
+      <form id="form-inscription" style="display:none;">
+        <div class="champ">
+          <label for="nom-inscription">Nom complet</label>
+          <input type="text" id="nom-inscription" placeholder="Ex. Koffi Traoré" autocomplete="name" required>
+        </div>
+        <div class="champ">
+          <label for="email-inscription">Email</label>
+          <input type="email" id="email-inscription" placeholder="Ex. koffi.tra@gmail.com" autocomplete="email" required>
+        </div>
+        <div class="champ">
+          <label for="mdp-inscription">Mot de passe</label>
+          <div style="position:relative;">
+            <input type="password" id="mdp-inscription" placeholder="Ex. MonMotDePasse123" autocomplete="new-password" required minlength="6" style="width:100%; padding-right:44px;">
+            <button type="button" class="bouton-oeil" data-cible="mdp-inscription" aria-label="Afficher le mot de passe" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1rem;">👁️</button>
+          </div>
+          <small>6 caractères minimum</small>
+        </div>
+        <button type="submit" class="bouton">Créer mon compte</button>
+      </form>
+    </div>
+
+    <!-- Mot de passe oublié -->
+    <form id="form-oubli" style="display:none;">
+      <p style="margin-bottom:12px;">Écris ton email : nous t'envoyons un lien pour choisir un nouveau mot de passe.</p>
+      <div class="champ">
+        <label for="email-oubli">Email</label>
+        <input type="email" id="email-oubli" placeholder="Ex. koffi.tra@gmail.com" autocomplete="email" required>
       </div>
-      <button type="submit" class="bouton">Créer mon compte</button>
+      <button type="submit" class="bouton">Envoyer le lien</button>
+      <p style="margin-top:12px; font-size:0.9rem;"><a href="#" id="lien-retour-connexion">← Retour à la connexion</a></p>
+      <p style="margin-top:8px; font-size:0.82rem; color:var(--texte-doux);">Les comptes « nom + code » n'ont pas d'email : si tu oublies ton code, crée un nouveau compte avec un autre nom.</p>
     </form>
 
     <p style="margin-top:16px; font-size:0.9rem;">
       <a href="#" id="lien-basculer">Pas encore de compte ? Inscris-toi</a>
     </p>
+
+    <!-- Google et Facebook -->
+    <p style="margin:18px 0 10px; text-align:center; color:var(--texte-doux); font-size:0.85rem;">— ou continuer avec —</p>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <button type="button" class="bouton secondaire" id="bouton-google" style="width:100%;">Continuer avec Google</button>
+      <button type="button" class="bouton secondaire" id="bouton-facebook" style="width:100%;">Continuer avec Facebook</button>
+    </div>
+  </div>
+
+  <!-- ===== Nouveau mot de passe (après le lien reçu par email) ===== -->
+  <div id="bloc-nouveau-mdp" class="carte-profil" style="display:none;">
+    <h2>Nouveau mot de passe</h2>
+    <div id="message-nouveau-mdp"></div>
+    <form id="form-nouveau-mdp">
+      <div class="champ">
+        <label for="nouveau-mdp">Choisis ton nouveau mot de passe</label>
+        <div style="position:relative;">
+          <input type="password" id="nouveau-mdp" autocomplete="new-password" required minlength="6" style="width:100%; padding-right:44px;">
+          <button type="button" class="bouton-oeil" data-cible="nouveau-mdp" aria-label="Afficher le mot de passe" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1rem;">👁️</button>
+        </div>
+        <small>6 caractères minimum</small>
+      </div>
+      <button type="submit" class="bouton">Enregistrer</button>
+    </form>
   </div>
 
   <!-- ===== Bloc visible seulement si connecté ===== -->
@@ -253,6 +317,7 @@
 <script type="module" src="js/ecrire-article.js"></script>
 <script type="module" src="js/commandes-profil.js"></script>
 <script type="module" src="js/produits.js"></script>
+<script type="module" src="js/notifications.js"></script>
 <script src="/js/menu.js"></script>
 </body>
 </html>

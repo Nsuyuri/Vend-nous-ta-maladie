@@ -1,11 +1,11 @@
 // ===========================================================
 // sw.js — service worker : site rapide et utilisable avec peu (ou pas) de connexion
 //  - pages, CSS et JS : réseau d'abord (3 s max), sinon copie sur le téléphone
-//  - librairies Firebase et polices : copie locale d'abord, mise à jour en arrière-plan
+//  - librairie Supabase et polices : copie locale d'abord, mise à jour en arrière-plan
 //  - images Cloudinary : gardées sur le téléphone après le premier chargement
 // Pour forcer une mise à jour chez tout le monde : change VERSION ci-dessous.
 // ===========================================================
-const VERSION = "vntm-v1";
+const VERSION = "vntm-v3";
 const C_SITE = VERSION + "-site";
 const C_EXTERNE = VERSION + "-externe";
 const C_IMAGES = VERSION + "-images";
@@ -13,13 +13,14 @@ const C_IMAGES = VERSION + "-images";
 const A_GARDER = [
   "/", "/index.html", "/blog.html", "/article.html", "/produit.html", "/panier.html", "/profil.html",
   "/css/style.css", "/manifest.webmanifest", "/icone.svg",
-  "/js/menu.js", "/js/outils.js", "/js/firebase-config.js", "/js/auth.js", "/js/produits.js",
+  "/js/menu.js", "/js/outils.js", "/js/supabase-config.js", "/js/auth.js", "/js/produits.js",
   "/js/produit.js", "/js/panier.js", "/js/panier-utils.js", "/js/commande-rapide.js",
   "/js/blog.js", "/js/article.js", "/js/cloudinary.js", "/js/commandes-profil.js",
-  "/js/ecrire-article.js", "/js/profil.js"
+  "/js/ecrire-article.js", "/js/profil.js", "/js/notifications.js",
+  "/conditions.html", "/gate.js"
 ];
 
-const HOTES_EXTERNES = ["www.gstatic.com", "fonts.googleapis.com", "fonts.gstatic.com"];
+const HOTES_EXTERNES = ["cdn.jsdelivr.net", "fonts.googleapis.com", "fonts.gstatic.com"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -97,5 +98,35 @@ self.addEventListener("fetch", (event) => {
   } else if (url.hostname === "res.cloudinary.com") {
     event.respondWith(imageDabordCopie(req));
   }
-  // Firestore, connexion Firebase, etc. : on ne touche à rien
+  // Appels à Supabase (données, connexion) : on ne touche à rien
+});
+
+// ===========================================================
+// NOTIFICATIONS PUSH
+// Reçoit les messages du serveur de notifications, même site fermé
+// ===========================================================
+self.addEventListener("push", (event) => {
+  let d = {};
+  try { const j = event.data.json(); d = j.data || j; } catch {}
+  const titre = d.titre || "Vend Nous Ta Maladie";
+  event.waitUntil(self.registration.showNotification(titre, {
+    body: d.corps || "",
+    icon: "/icone.svg",
+    badge: "/icone.svg",
+    data: { lien: d.lien || "/" },
+    tag: d.tag || undefined
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const lien = (event.notification.data && event.notification.data.lien) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((fenetres) => {
+      for (const f of fenetres) {
+        if ("focus" in f) { f.navigate(lien).catch(() => {}); return f.focus(); }
+      }
+      return self.clients.openWindow(lien);
+    })
+  );
 });

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Avant d’entrer – Vend Nous Ta Maladie</title>
+<style>
+  :root{
+    --ink:#14201a; --forest:#1f3b2d; --leaf:#3f6b3a; --ochre:#c98a1b;
+    --paper:#f3f5ee; --line:#cfd8c8; --muted:#4d5d52; --danger:#9b2c2c;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font:17px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{background:var(--forest);color:#fff;padding:28px 20px 26px}
+  header p{margin:0 0 6px;font-size:15px;color:#cfe0c8}
+  header h1{margin:0;font-size:30px;line-height:1.15;font-weight:800;letter-spacing:-.01em}
+  main{max-width:640px;margin:0 auto;padding:22px 18px 40px}
+  .intro{margin:0 0 20px}
+  details{background:#fff;border:1px solid var(--line);border-radius:10px;margin:0 0 12px}
+  summary{cursor:pointer;list-style:none;padding:16px 18px;font-weight:700;
+    display:flex;justify-content:space-between;align-items:center;min-height:52px}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";font-size:24px;color:var(--leaf);line-height:1}
+  details[open] summary::after{content:"–"}
+  .txt{padding:0 18px 18px;border-top:1px solid var(--line)}
+  .txt h3{margin:18px 0 4px;font-size:17px;color:var(--forest)}
+  .txt p,.txt li{margin:0 0 8px;max-width:62ch}
+  .txt ul{padding-left:20px;margin:0 0 8px}
+  .updated{font-size:14px;color:var(--muted);margin:8px 0 0}
+  .accept{margin-top:24px;padding:18px;background:#fff;border:2px solid var(--forest);border-radius:10px}
+  label.check{display:flex;gap:14px;align-items:flex-start;cursor:pointer}
+  input[type=checkbox]{width:28px;height:28px;flex:none;accent-color:var(--leaf);margin-top:2px}
+  .btn{display:block;width:100%;min-height:52px;margin-top:16px;border:0;border-radius:10px;
+    font:inherit;font-weight:700;font-size:18px;cursor:pointer}
+  .btn.go{background:var(--leaf);color:#fff}
+  .btn.go:disabled{background:#b9c4b4;color:#fff;cursor:not-allowed}
+  .btn.no{background:transparent;color:var(--muted);text-decoration:underline;min-height:44px;font-weight:500;font-size:16px;margin-top:6px}
+  #refus{display:none;margin-top:12px;color:var(--danger);font-weight:600}
+  :focus-visible{outline:3px solid var(--ochre);outline-offset:2px}
+</style>
+</head>
+<body>
+<header>
+  <p>Vend Nous Ta Maladie</p>
+  <h1>Avant d’entrer, lis nos règles</h1>
+</header>
+
+<main>
+  <p class="intro">Lis les deux textes ci-dessous (touche pour les ouvrir), puis accepte pour continuer vers le site.</p>
+
+  <details>
+    <summary>Conditions d’utilisation</summary>
+    <div class="txt">
+      <h3>1. Le site</h3>
+      <p>Vend Nous Ta Maladie est uniquement une plateforme qui permet l’accès aux médicaments traditionnels dans toute la Côte d’Ivoire. Elle met en relation des vendeurs et des acheteurs.</p>
+      <p>Nous ne sommes pas des experts en santé. Nous ne fabriquons pas les produits, nous ne les testons pas et nous ne donnons aucun conseil médical.</p>
+      <p>Nous pouvons prélever une commission sur les ventes, indiquée au vendeur avant la validation de son compte.</p>
+
+      <h3>2. Avertissement sur la santé</h3>
+      <ul>
+        <li>Les produits vendus sont des remèdes traditionnels. Ils ne remplacent pas l’avis d’un médecin.</li>
+        <li>Aucun produit n’est garanti pour guérir une maladie.</li>
+        <li>En cas de maladie grave, de grossesse, d’enfant, ou si tu suis déjà un traitement, demande l’avis d’un professionnel de santé avant d’utiliser un produit.</li>
+        <li>En cas de réaction inhabituelle, arrête le produit et consulte un centre de santé.</li>
+      </ul>
+
+      <h3>3. Le respect avant tout</h3>
+      <p>Tout se fait dans le respect : entre acheteurs, entre vendeurs, et avec l’administrateur. Les insultes, le harcèlement, les menaces et les arnaques ne sont pas acceptés.</p>
+
+      <h3>4. Les vendeurs</h3>
+      <ul>
+        <li>Un vendeur doit faire une demande, que l’administrateur vérifie avant de l’accepter.</li>
+        <li>Les informations données (expérience, téléphone, localisation) doivent être vraies.</li>
+        <li>Le vendeur est responsable de ses produits : composition, mode d’emploi et effets secondaires doivent être décrits honnêtement.</li>
+        <li>Il est interdit de vendre aux gens des produits de mauvaise qualité, périmés, mal conservés, sans valeur ou faussement décrits. Nos clients méritent des produits sérieux.</li>
+        <li>Les produits dangereux ou interdits par la loi sont refusés.</li>
+        <li>Un vendeur qui trompe ses clients voit son produit retiré et son compte supprimé.</li>
+      </ul>
+
+      <h3>5. Les acheteurs</h3>
+      <p>Tu peux commander avec un compte ou en visiteur. Le paiement et la livraison sont précisés au moment de la commande. Les informations que tu donnes (nom, téléphone, adresse) doivent permettre au vendeur de te joindre.</p>
+
+      <h3>6. Le blog</h3>
+      <p>Tout utilisateur inscrit peut proposer un article. Avant de le publier, nous vérifions sa pertinence : il doit être utile, clair et en lien avec la médecine traditionnelle. Les contenus irrespectueux, trompeurs ou qui donnent des conseils médicaux dangereux sont refusés ou retirés.</p>
+
+      <h3>7. Suspension</h3>
+      <p>Nous pouvons suspendre ou supprimer un compte qui ne respecte pas ces règles.</p>
+
+      <h3>8. Changements</h3>
+      <p>Ces règles peuvent changer. Si c’est le cas, nous te demanderons de les accepter à nouveau.</p>
+      <p class="updated">Version du <span class="ver"></span></p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Politique de confidentialité</summary>
+    <div class="txt">
+      <h3>1. Ce que nous collectons</h3>
+      <ul>
+        <li>Compte : nom, email ou code de connexion, mot de passe (jamais lisible par nous).</li>
+        <li>Connexion Google ou Facebook : ton nom et ton email.</li>
+        <li>Commandes : nom, numéro de téléphone et adresse de livraison.</li>
+        <li>Vendeurs : numéro de téléphone, années d’expérience, localisation (saisie ou GPS), produits et images.</li>
+        <li>Notifications : un identifiant de ton appareil, seulement si tu les acceptes.</li>
+      </ul>
+
+      <h3>2. Pourquoi</h3>
+      <p>Pour créer ton compte, traiter les commandes, vérifier les vendeurs, t’envoyer des notifications et protéger le site contre les abus.</p>
+
+      <h3>3. Qui peut voir tes données</h3>
+      <ul>
+        <li>Le vendeur voit ton nom, ton téléphone et ton adresse uniquement pour la commande que tu lui fais.</li>
+        <li>L’administrateur voit les comptes, les demandes vendeur et les articles pour les vérifier.</li>
+        <li>Nous ne vendons pas tes données.</li>
+      </ul>
+
+      <h3>4. Nos prestataires</h3>
+      <p>Supabase (base de données et connexion), Cloudinary (images), Railway (hébergement du site), et Google ou Facebook si tu choisis ces connexions. Ils traitent les données pour faire fonctionner le site.</p>
+
+      <h3>5. Où et combien de temps</h3>
+      <p>Toutes les données sont conservées sur un serveur cloud (en ligne), chez nos prestataires.</p>
+      <p>Elles ne seront jamais utilisées à de mauvaises fins : pas de revente, pas d’arnaque, pas d’usage contre toi. Elles servent uniquement au fonctionnement du site.</p>
+      <p>Tes données sont gardées tant que ton compte existe. Les commandes en visiteur sont gardées le temps nécessaire au suivi de la commande.</p>
+
+      <h3>6. Tes droits</h3>
+      <p>Tu peux demander à voir, corriger ou supprimer tes données en écrivant à <strong class="mail"></strong>. Tu peux aussi refuser les notifications à tout moment dans les réglages de ton navigateur ou de ton téléphone.</p>
+      <p>Ces droits s’appuient sur la loi ivoirienne n° 2013-450 du 19 juin 2013 sur la protection des données à caractère personnel, contrôlée par l’ARTCI.</p>
+
+      <h3>7. Âge minimum</h3>
+      <p>Le site est destiné aux personnes de 18 ans et plus.</p>
+      <p class="updated">Version du <span class="ver"></span></p>
+    </div>
+  </details>
+
+  <section class="accept">
+    <label class="check">
+      <input type="checkbox" id="ok">
+      <span>J’ai lu et j’accepte les conditions d’utilisation et la politique de confidentialité.</span>
+    </label>
+    <button class="btn go" id="go" disabled>Accepter et continuer</button>
+    <button class="btn no" id="no" type="button">Je refuse</button>
+    <p id="refus" role="alert">Sans ton accord, tu ne peux pas utiliser le site.</p>
+  </section>
+</main>
+
+<script>
+  /* ====== À MODIFIER ====== */
+  var CONFIG = {
+    version: "2026-11-02",          // change la date si tu modifies les textes
+    pageSuivante: "index.html",     // page affichée après acceptation
+    email: "ton-email@exemple.com"  // ton email de contact
+  };
+  /* ======================== */
+
+  var KEY = "vnm_consent";
+
+  function dejaAccepte(){
+    try{
+      var c = JSON.parse(localStorage.getItem(KEY));
+      return !!(c && c.version === CONFIG.version);
+    }catch(e){ return false; }
+  }
+
+  // Page de retour : uniquement un fichier du site (pas de lien externe)
+  function pageRetour(){
+    var r = new URLSearchParams(location.search).get("retour");
+    if(r && /^[a-zA-Z0-9_\-\.]+\.html$/.test(r)) return r;
+    return CONFIG.pageSuivante;
+  }
+
+  if(dejaAccepte() && !location.search.includes("revoir")){
+    location.replace(pageRetour());
+  }
+
+  document.querySelectorAll(".ver").forEach(function(e){ e.textContent = CONFIG.version; });
+  document.querySelectorAll(".mail").forEach(function(e){ e.textContent = CONFIG.email; });
+
+  var ok = document.getElementById("ok");
+  var go = document.getElementById("go");
+  var refus = document.getElementById("refus");
+
+  ok.addEventListener("change", function(){
+    go.disabled = !ok.checked;
+    refus.style.display = "none";
+  });
+
+  go.addEventListener("click", function(){
+    if(!ok.checked) return;
+    try{
+      localStorage.setItem(KEY, JSON.stringify({
+        version: CONFIG.version,
+        date: new Date().toISOString()
+      }));
+    }catch(e){}
+    location.href = pageRetour();
+  });
+
+  document.getElementById("no").addEventListener("click", function(){
+    ok.checked = false;
+    go.disabled = true;
+    refus.style.display = "block";
+  });
+</script>
+</body>
+</html>

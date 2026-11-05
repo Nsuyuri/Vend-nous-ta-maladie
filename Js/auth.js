@@ -8,11 +8,11 @@ import { sb, auth, ok, camel, surChangementAuth, surRecuperationMotDePasse } fro
 export { surChangementAuth, surRecuperationMotDePasse };
 
 // Crée un compte. Le profil (rôle « acheteur ») est créé automatiquement par la base.
-export async function inscription(nom, email, motDePasse) {
+export async function inscription(nom, email, motDePasse, captchaToken) {
   const { data, error } = await sb.auth.signUp({
     email,
     password: motDePasse,
-    options: { data: { nom: nom.trim() } }
+    options: { data: { nom: nom.trim() }, captchaToken }
   });
   if (error) throw error;
 
@@ -25,8 +25,8 @@ export async function inscription(nom, email, motDePasse) {
   return auth.currentUser;
 }
 
-export async function connexion(email, motDePasse) {
-  const { error } = await sb.auth.signInWithPassword({ email, password: motDePasse });
+export async function connexion(email, motDePasse, captchaToken) {
+  const { error } = await sb.auth.signInWithPassword({ email, password: motDePasse, options: { captchaToken } });
   if (error) throw error;
   return auth.currentUser;
 }
@@ -36,9 +36,10 @@ export async function deconnexion() {
 }
 
 // Envoie un email avec un lien pour choisir un nouveau mot de passe
-export async function envoyerLienReinitialisation(email, pageRetour = "profil.html") {
+export async function envoyerLienReinitialisation(email, pageRetour = "profil.html", captchaToken) {
   const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: new URL(pageRetour, window.location.href).href
+    redirectTo: new URL(pageRetour, window.location.href).href,
+    captchaToken
   });
   if (error) throw error;
 }
@@ -73,25 +74,48 @@ export async function recupererProfil(uid) {
 // Le nom devient un email interne invisible (Supabase en exige un).
 // Attention : sans vrai email, le « mot de passe oublié » n'est pas possible pour ces comptes.
 
-const DOMAINE_INTERNE = "vendnoustamaladie.app";
+// IMPORTANT : ce domaine doit t'appartenir et avoir un enregistrement MX (voir les étapes à faire).
+// Supabase refuse les emails dont le domaine n'existe pas ou ne peut pas recevoir de courrier.
+export const DOMAINE_INTERNE = "vendnoustamaladie.ci";
+
+// Vrai si l'email est un faux email interne (compte créé avec nom + code)
+export function estEmailInterne(email) {
+  return String(email || "").toLowerCase().endsWith("@" + DOMAINE_INTERNE);
+}
 
 export function nomVersEmail(nom) {
   const propre = String(nom || "").trim().toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]/g, "");
-  return propre ? `${propre}@${DOMAINE_INTERNE}` : "";
+  return propre ? `${propre.slice(0, 40)}@${DOMAINE_INTERNE}` : "";
 }
 
-export async function inscriptionParNom(nom, code) {
+export async function inscriptionParNom(nom, code, captchaToken) {
   const email = nomVersEmail(nom);
   if (!email) throw Object.assign(new Error("Nom invalide"), { code: "nom_invalide" });
-  return inscription(nom, email, code);
+  return inscription(nom, email, code, captchaToken);
 }
 
-export async function connexionParNom(nom, code) {
+export async function connexionParNom(nom, code, captchaToken) {
   const email = nomVersEmail(nom);
   if (!email) throw Object.assign(new Error("Nom invalide"), { code: "nom_invalide" });
-  return connexion(email, code);
+  return connexion(email, code, captchaToken);
+}
+
+// Ajoute un vrai email à un compte créé avec nom + code (permet de récupérer le compte).
+// Supabase envoie un lien de confirmation à la nouvelle adresse. Le nom + code continue
+// de fonctionner tant que l'email n'est pas confirmé ; après confirmation, on se connecte
+// avec le nouvel email.
+export async function ajouterEmailRecuperation(email) {
+  const propre = String(email || "").trim().toLowerCase();
+  if (!propre || estEmailInterne(propre)) {
+    throw Object.assign(new Error("Email invalide"), { code: "email_invalide_saisi" });
+  }
+  const { error } = await sb.auth.updateUser(
+    { email: propre },
+    { emailRedirectTo: new URL("profil.html", window.location.href).href }
+  );
+  if (error) throw error;
 }
 
 // ---------- Connexion avec Google ou Facebook ----------
@@ -121,12 +145,16 @@ export function estVendeurValide(profil) {
 }
 
 // Traduit une erreur Supabase en message compréhensible
-export function traduireErreur(err) {
+export function traduireErreur(err, mode = "email") {
   const code = err?.code || "";
   const texte = String(err?.message || "");
 
   if (code === "confirmation_requise")
     return "Compte créé. Vérifie ta boîte mail et clique sur le lien de confirmation, puis connecte-toi.";
+  if (code === "captcha_requis")
+    return "Coche la case « Je ne suis pas un robot » avant de continuer.";
+  if (code === "captcha_failed" || /captcha/i.test(texte))
+    return "La vérification anti-robot a échoué. Réessaie.";
   if (code === "nom_invalide")
     return "Écris ton nom (lettres ou chiffres).";
   if (code === "user_already_exists" || code === "email_exists" || /already registered/i.test(texte))
@@ -137,8 +165,14 @@ export function traduireErreur(err) {
     return "Nom, email ou mot de passe incorrect.";
   if (code === "email_not_confirmed" || /email not confirmed/i.test(texte))
     return "Confirme d'abord ton email avec le lien reçu par mail.";
-  if (code === "validation_failed" || /invalid.*email|email.*invalid/i.test(texte))
-    return "L'adresse email n'est pas valide.";
+  if (code === "email_invalide_saisi")
+    return "Entre une vraie adresse email (ex : koffi@gmail.com).";
+  if (code === "email_address_invalid" || code === "validation_failed" || /invalid.*email|email.*invalid/i.test(texte))
+    return mode === "nom"
+      ? "Ce nom ne peut pas être utilisé. Essaie un autre nom (lettres et chiffres)."
+      : "L'adresse email n'est pas valide.";
+  if (code === "signup_disabled" || /signups? not allowed|signup.*disabled/i.test(texte))
+    return "Les inscriptions sont fermées pour l'instant.";
   if (code === "over_request_rate_limit" || code === "over_email_send_rate_limit" || /rate limit/i.test(texte))
     return "Trop de tentatives. Attends quelques minutes puis réessaie.";
   if (!navigator.onLine || /fetch|network/i.test(texte))

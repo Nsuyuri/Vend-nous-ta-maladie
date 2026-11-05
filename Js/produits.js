@@ -8,6 +8,7 @@ import { recupererProfil, surChangementAuth, estVendeurValide } from "./auth.js"
 import { ouvrirCommandeRapide } from "./commande-rapide.js";
 import { optimiserImage, afficherToast } from "./outils.js";
 import { ajouterAuPanier } from "./panier-utils.js";
+import { verifierPhoto, afficherLimite } from "./limites-images.js";
 
 const blocPublier = document.getElementById("bloc-publier-produit");
 const formProduit = document.getElementById("form-produit");
@@ -30,13 +31,16 @@ if (formProduit) {
     }
   });
 
+  afficherLimite(document.getElementById("aide-image-produit"));
+
   formProduit.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fichierImage = document.getElementById("produit-image").files[0];
     const bouton = document.getElementById("bouton-publier-produit");
 
-    if (fichierImage && fichierImage.size > 2 * 1024 * 1024) {
-      afficherMessage("L'image dépasse 2 Mo. Choisis une image plus légère.", "erreur");
+    const probleme = await verifierPhoto(fichierImage);
+    if (probleme) {
+      afficherMessage(probleme, "erreur");
       return;
     }
 

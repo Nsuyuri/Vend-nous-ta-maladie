@@ -4,6 +4,7 @@
 
 import { sb, ok, camelListe, snake, auth, estRefuse } from "./supabase-config.js";
 import { recupererProfil, surChangementAuth } from "./auth.js";
+import { verifierPhoto } from "./limites-images.js";
 
 const formArticle = document.getElementById("form-article");
 const messageZone = document.getElementById("message-article-profil");
@@ -23,6 +24,12 @@ formArticle.addEventListener("submit", async (e) => {
   try {
     const fichierImage = document.getElementById("article-image").files[0];
     let urlImage = null;
+
+    const probleme = await verifierPhoto(fichierImage);
+    if (probleme) {
+      afficherMessage(probleme, "erreur");
+      return;
+    }
 
     if (fichierImage) {
       const { envoyerImage } = await import("./cloudinary.js");

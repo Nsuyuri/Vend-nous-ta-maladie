@@ -6,10 +6,10 @@ import { sb, ok, snake, estRefuse } from "./supabase-config.js";
 import {
   inscription, connexion, deconnexion, inscriptionParNom, connexionParNom, connexionSociale,
   envoyerLienReinitialisation, changerMotDePasse, surRecuperationMotDePasse,
-  recupererProfil, surChangementAuth, traduireErreur, enregistrerAcceptation,
-  ajouterEmailRecuperation, estEmailInterne
+  recupererProfil, surChangementAuth, traduireErreur, enregistrerAcceptation
 } from "./auth.js";
 import { envoyerImage } from "./cloudinary.js";
+import { verifierPhoto } from "./limites-images.js";
 
 // ---------- Éléments du DOM ----------
 const blocAuth = document.getElementById("bloc-auth");
@@ -36,29 +36,6 @@ const localisationTexte = document.getElementById("localisation-texte");
 let modeLocalisation = "manuel";
 
 let utilisateurConnecte = null;
-
-// ---------- Anti-robot (Cloudflare Turnstile) ----------
-// Colle ici ta « Site key » Turnstile (la clé publique). Tant qu'elle n'est pas remplie,
-// le captcha est désactivé côté site.
-const CAPTCHA_SITE_KEY = "COLLE-ICI-TA-CLE-SITE-TURNSTILE";
-const captchaActif = !CAPTCHA_SITE_KEY.startsWith("COLLE-ICI");
-let captchaWidgetId = null;
-
-function monterCaptcha() {
-  if (!captchaActif) { document.getElementById("captcha-box").style.display = "none"; return; }
-  if (!window.turnstile) { setTimeout(monterCaptcha, 300); return; }   // script pas encore chargé
-  captchaWidgetId = window.turnstile.render("#captcha-box", { sitekey: CAPTCHA_SITE_KEY, language: "fr" });
-}
-function jetonCaptcha() {
-  if (!captchaActif) return undefined;
-  const jeton = window.turnstile && window.turnstile.getResponse(captchaWidgetId);
-  if (!jeton) throw Object.assign(new Error("Captcha requis"), { code: "captcha_requis" });
-  return jeton;
-}
-function renouvelerCaptcha() {
-  if (captchaActif && window.turnstile) window.turnstile.reset(captchaWidgetId);   // un jeton ne sert qu'une fois
-}
-monterCaptcha();
 
 // ---------- Méthodes de connexion : nom + code, ou email ----------
 const formNom = document.getElementById("form-nom");
@@ -105,13 +82,10 @@ formNom.addEventListener("submit", async (e) => {
   }
   bouton.disabled = true;
   try {
-    const jeton = jetonCaptcha();
-    if (inscrire) await inscriptionParNom(nom, code, jeton);
-    else await connexionParNom(nom, code, jeton);
+    if (inscrire) await inscriptionParNom(nom, code);
+    else await connexionParNom(nom, code);
   } catch (err) {
-    console.error("Nom + code :", err.code, err.message);
-    afficherMessage(messageAuth, traduireErreur(err, "nom"), "erreur");
-    renouvelerCaptcha();
+    afficherMessage(messageAuth, traduireErreur(err), "erreur");
   }
   bouton.disabled = false;
 });
@@ -122,10 +96,9 @@ formConnexion.addEventListener("submit", async (e) => {
   const email = document.getElementById("email-connexion").value;
   const mdp = document.getElementById("mdp-connexion").value;
   try {
-    await connexion(email, mdp, jetonCaptcha());
+    await connexion(email, mdp);
   } catch (err) {
     afficherMessage(messageAuth, traduireErreur(err), "erreur");
-    renouvelerCaptcha();
   }
 });
 
@@ -136,10 +109,9 @@ formInscription.addEventListener("submit", async (e) => {
   const email = document.getElementById("email-inscription").value;
   const mdp = document.getElementById("mdp-inscription").value;
   try {
-    await inscription(nom, email, mdp, jetonCaptcha());
+    await inscription(nom, email, mdp);
   } catch (err) {
     afficherMessage(messageAuth, traduireErreur(err), "erreur");
-    renouvelerCaptcha();
   }
 });
 
@@ -173,12 +145,11 @@ formOubli.addEventListener("submit", async (e) => {
   const bouton = formOubli.querySelector("button[type=submit]");
   bouton.disabled = true;
   try {
-    await envoyerLienReinitialisation(document.getElementById("email-oubli").value, "profil.html", jetonCaptcha());
+    await envoyerLienReinitialisation(document.getElementById("email-oubli").value);
     afficherMessage(messageAuth, "Si cet email a un compte, un lien vient d'être envoyé. Pense à regarder aussi les spams.", "succes");
   } catch (err) {
     afficherMessage(messageAuth, traduireErreur(err), "erreur");
   }
-  renouvelerCaptcha();
   bouton.disabled = false;
 });
 
@@ -201,22 +172,6 @@ document.getElementById("form-nouveau-mdp").addEventListener("submit", async (e)
     afficherMessage(messageNouveauMdp, traduireErreur(err), "erreur");
     bouton.disabled = false;
   }
-});
-
-// ---------- Ajouter un vrai email (comptes créés avec nom + code) ----------
-document.getElementById("form-ajout-email").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const bouton = e.target.querySelector("button[type=submit]");
-  const zone = document.getElementById("message-ajout-email");
-  bouton.disabled = true;
-  try {
-    await ajouterEmailRecuperation(document.getElementById("email-ajout").value);
-    afficherMessage(zone, "Un lien de confirmation vient d'être envoyé à cet email. Clique dessus pour valider (regarde aussi les spams).", "succes");
-  } catch (err) {
-    console.error("Ajout email :", err.code, err.message);
-    afficherMessage(zone, traduireErreur(err), "erreur");
-  }
-  bouton.disabled = false;
 });
 
 // ---------- Déconnexion ----------
@@ -349,9 +304,7 @@ surChangementAuth(async (utilisateur) => {
   enregistrerAcceptation(profil);   // garde la date d'acceptation des conditions
 
   document.getElementById("profil-nom").textContent = profil.nom;
-  const emailInterne = estEmailInterne(profil.email);
-  document.getElementById("profil-email").textContent = emailInterne ? "" : profil.email;
-  document.getElementById("bloc-ajout-email").style.display = emailInterne ? "block" : "none";
+  document.getElementById("profil-email").textContent = profil.email;
   afficherAvatar(profil.nom, profil.photoUrl);
 
   // Vérifie s'il existe déjà une demande vendeur pour cet utilisateur
@@ -414,8 +367,9 @@ champPhoto.addEventListener("change", async () => {
   const fichier = champPhoto.files[0];
   if (!fichier || !utilisateurConnecte) return;
 
-  if (fichier.size > 2 * 1024 * 1024) {
-    afficherMessage(messagePhoto, "La photo dépasse 2 Mo. Choisis une image plus légère.", "erreur");
+  const probleme = await verifierPhoto(fichier);
+  if (probleme) {
+    afficherMessage(messagePhoto, probleme, "erreur");
     champPhoto.value = "";
     return;
   }

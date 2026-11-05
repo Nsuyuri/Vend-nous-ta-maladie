@@ -10,8 +10,8 @@
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
 
-const SUPABASE_URL = "https://COLLE-ICI-TON-PROJET.supabase.co";
-const SUPABASE_ANON_KEY = "COLLE-ICI-TA-CLE-ANON";
+const SUPABASE_URL = "https://fjakkjqidkiaiblwgflw.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqYWtranFpZGtpYWlibHdnZmx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2OTk3NjYsImV4cCI6MjEwOTI3NTc2Nn0.mPCGQFbzbVrTe1L6fwjO8oHMk-WoyTvZ4YivRfP-BlQ";
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }

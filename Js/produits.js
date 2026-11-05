@@ -3,14 +3,11 @@
 // Utilisé sur profil.html (publier) et index.html (afficher tout)
 // ===========================================================
 
-import { db } from "./firebase-config.js";
-import { recupererProfil, surChangementAuth } from "./auth.js";
+import { sb, ok, camel, camelListe, snake, estRefuse } from "./supabase-config.js";
+import { recupererProfil, surChangementAuth, estVendeurValide } from "./auth.js";
 import { ouvrirCommandeRapide } from "./commande-rapide.js";
 import { optimiserImage, afficherToast } from "./outils.js";
 import { ajouterAuPanier } from "./panier-utils.js";
-import {
-  collection, addDoc, query, where, getDocs, orderBy, limit, doc, deleteDoc
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const blocPublier = document.getElementById("bloc-publier-produit");
 const formProduit = document.getElementById("form-produit");
@@ -59,10 +56,10 @@ if (formProduit) {
       const { envoyerImage } = await import("./cloudinary.js");
       const urlImage = await envoyerImage(fichierImage, "produits");
 
-      // 2. On enregistre le produit dans Firestore avec le lien de l'image
+      // 2. On enregistre le produit dans Supabase avec le lien de l'image
       etape = "enregistrement du produit";
       const profil = await recupererProfil(utilisateurConnecte.uid);
-      await addDoc(collection(db, "produits"), {
+      ok(await sb.from("produits").insert(snake({
         nom: document.getElementById("produit-nom").value,
         prix: Number(document.getElementById("produit-prix").value),
         description: document.getElementById("produit-description").value,
@@ -72,17 +69,16 @@ if (formProduit) {
         effetsSecondaires: document.getElementById("produit-effets-secondaires").value.trim() || null,
         imageUrl: urlImage,
         vendeurUid: utilisateurConnecte.uid,
-        vendeurNom: profil.nom,
-        dateCreation: new Date().toISOString()
-      });
+        vendeurNom: profil.nom
+      })));
 
       afficherMessage("Produit publié avec succès.", "succes");
       formProduit.reset();
       chargerMesProduits(utilisateurConnecte.uid);
     } catch (err) {
       console.error("Erreur publication produit :", err);
-      const detail = err.code === "permission-denied"
-        ? "ton compte n'est pas enregistré comme vendeur validé (règles Firestore)"
+      const detail = estRefuse(err)
+        ? "ton compte n'est pas enregistré comme vendeur validé"
         : (err.message || "erreur inconnue");
       afficherMessage(`Échec à l'étape « ${etape} » : ${detail}`, "erreur");
     } finally {
@@ -94,20 +90,7 @@ if (formProduit) {
 
 // Vrai seulement si l'utilisateur est un vendeur validé
 async function verifierVendeurValide(uid) {
-  const profil = await recupererProfil(uid);
-  if (!profil) return false;
-  return profil.role === "vendeur" ||
-         profil.statutVendeur === "valide" ||
-         await demandeValidee(uid);   // même source que le badge « Vendeur validé »
-}
-
-// Vrai si une demande de cet utilisateur a été validée dans "demandesVendeur"
-async function demandeValidee(uid) {
-  const q = query(collection(db, "demandesVendeur"), where("uid", "==", uid));
-  const resultats = await getDocs(q);
-  let valide = false;
-  resultats.forEach((d) => { if (d.data().statut === "valide") valide = true; });
-  return valide;
+  return estVendeurValide(await recupererProfil(uid));
 }
 
 // Empêche l'injection de HTML dans les textes venant des utilisateurs
@@ -118,11 +101,12 @@ function echapper(texte) {
 }
 
 async function chargerMesProduits(uid) {
-  const q = query(collection(db, "produits"), where("vendeurUid", "==", uid));
-  const resultats = await getDocs(q);
+  const produits = camelListe(ok(
+    await sb.from("produits").select("*").eq("vendeur_uid", uid).order("date_creation", { ascending: false })
+  ));
   grilleMesProduits.innerHTML = "";
-  resultats.forEach((docSnap) => {
-    grilleMesProduits.appendChild(carteProduit(docSnap.id, docSnap.data(), true));
+  produits.forEach((p) => {
+    grilleMesProduits.appendChild(carteProduit(p.id, p, true));
   });
 }
 
@@ -152,17 +136,18 @@ async function chargerTousLesProduits() {
 
   // 2) Mise à jour avec les données fraîches (24 produits maximum = chargement léger)
   try {
-    const q = query(collection(db, "produits"), orderBy("dateCreation", "desc"), limit(24));
-    const resultats = await getDocs(q);
-    if (resultats.empty) return; // on laisse les cartes d'exemple si aucun produit réel
+    const lignes = camelListe(ok(
+      await sb.from("produits")
+        .select("id, nom, prix, image_url, vendeur_uid, vendeur_nom")
+        .order("date_creation", { ascending: false })
+        .limit(24)
+    ));
+    if (lignes.length === 0) return; // on laisse les cartes d'exemple si aucun produit réel
 
-    const liste = resultats.docs.map((d) => {
-      const x = d.data();
-      return {
-        id: d.id, nom: x.nom, prix: x.prix, imageUrl: x.imageUrl,
-        vendeurUid: x.vendeurUid, vendeurNom: x.vendeurNom
-      };
-    });
+    const liste = lignes.map((x) => ({
+      id: x.id, nom: x.nom, prix: Number(x.prix), imageUrl: x.imageUrl,
+      vendeurUid: x.vendeurUid, vendeurNom: x.vendeurNom
+    }));
     dessinerProduits(liste);
     try { localStorage.setItem(CLE_CACHE_PRODUITS, JSON.stringify(liste)); } catch {}
   } catch (err) {
@@ -229,7 +214,8 @@ function carteProduit(id, produit, supprimable = false) {
       boutonSupprimer.disabled = true;
       boutonSupprimer.textContent = "Suppression...";
       try {
-        await deleteDoc(doc(db, "produits", id));
+        const supprimes = ok(await sb.from("produits").delete().eq("id", id).select("id"));
+        if (!supprimes.length) throw Object.assign(new Error("refusé"), { code: "42501" });
         carte.remove();
         afficherMessage("Produit supprimé.", "succes");
       } catch (err) {
@@ -237,8 +223,8 @@ function carteProduit(id, produit, supprimable = false) {
         boutonSupprimer.disabled = false;
         boutonSupprimer.textContent = "Supprimer";
         afficherMessage(
-          err.code === "permission-denied"
-            ? "Suppression refusée par les règles Firestore."
+          estRefuse(err)
+            ? "Suppression refusée."
             : "Impossible de supprimer le produit. Réessaie.",
           "erreur"
         );

@@ -2,10 +2,7 @@
 // blog.js — page blog.html : tous les articles publiés, cliquables
 // ===========================================================
 
-import { db } from "./firebase-config.js";
-import {
-  collection, query, where, getDocs
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { sb, ok, camelListe } from "./supabase-config.js";
 
 const grille = document.getElementById("grille-blog");
 
@@ -17,18 +14,14 @@ function echapper(texte) {
 
 async function chargerArticlesPublies() {
   try {
-    // Pas de orderBy ici : il demanderait un index Firestore. Le tri se fait ci-dessous.
-    const q = query(collection(db, "articles"), where("statut", "==", "publie"));
-    const resultats = await getDocs(q);
+    const articles = camelListe(ok(
+      await sb.from("articles").select("*").eq("statut", "publie").order("date_creation", { ascending: false })
+    ));
 
-    if (resultats.empty) {
+    if (articles.length === 0) {
       grille.innerHTML = `<p style="color:var(--texte-doux);">Aucun article publié pour l'instant.</p>`;
       return;
     }
-
-    const articles = resultats.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => String(b.dateCreation || "").localeCompare(String(a.dateCreation || "")));
 
     grille.innerHTML = "";
     articles.forEach((article) => {

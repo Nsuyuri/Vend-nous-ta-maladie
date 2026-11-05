@@ -2,8 +2,7 @@
 // produit.js — page produit.html
 // ===========================================================
 
-import { db } from "./firebase-config.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { sb, ok, camel, estRefuse } from "./supabase-config.js";
 import { ajouterAuPanier, compterArticlesPanier } from "./panier-utils.js";
 import { ouvrirCommandeRapide } from "./commande-rapide.js";
 import { optimiserImage, afficherToast } from "./outils.js";
@@ -25,23 +24,23 @@ async function afficherProduit() {
     await chargerProduit();
   } catch (err) {
     console.error("Erreur page produit :", err);
-    messageZone.innerHTML = `<div class="message erreur">Impossible d'afficher ce produit${err.code === "permission-denied" ? " (accès refusé par les règles Firestore)" : ""}.</div>`;
+    messageZone.innerHTML = `<div class="message erreur">Impossible d'afficher ce produit${estRefuse(err) ? " (accès refusé)" : ""}.</div>`;
   }
 }
 
 async function chargerProduit() {
-  if (!idProduit) {
+  if (!idProduit || !/^[0-9a-f-]{36}$/i.test(idProduit)) {
     messageZone.innerHTML = `<div class="message erreur">Produit introuvable.</div>`;
     return;
   }
 
-  const snap = await getDoc(doc(db, "produits", idProduit));
-  if (!snap.exists()) {
+  const ligne = ok(await sb.from("produits").select("*").eq("id", idProduit).maybeSingle());
+  if (!ligne) {
     messageZone.innerHTML = `<div class="message erreur">Ce produit n'existe plus.</div>`;
     return;
   }
 
-  const produit = snap.data();
+  const produit = camel(ligne);
   conteneur.innerHTML = `
     <img src="${echapper(optimiserImage(produit.imageUrl, 800))}" alt="${echapper(produit.nom)}" decoding="async">
     <div>

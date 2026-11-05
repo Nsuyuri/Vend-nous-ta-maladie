@@ -3,11 +3,8 @@
 // Livraison simplifiée : 2 statuts (À livrer → Livrée), paiement à la réception
 // ===========================================================
 
-import { db } from "./firebase-config.js";
-import { recupererProfil, surChangementAuth } from "./auth.js";
-import {
-  collection, query, where, getDocs, doc, updateDoc
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { sb, ok, camelListe, estRefuse } from "./supabase-config.js";
+import { recupererProfil, surChangementAuth, estVendeurValide } from "./auth.js";
 
 const listeMesCommandes = document.getElementById("liste-mes-commandes");
 const blocCommandesRecues = document.getElementById("bloc-commandes-recues");
@@ -43,15 +40,6 @@ function numeroInternational(telephone) {
   return chiffres;
 }
 
-// Vrai si une demande de cet utilisateur a été validée dans "demandesVendeur"
-async function demandeValidee(uid) {
-  const q = query(collection(db, "demandesVendeur"), where("uid", "==", uid));
-  const resultats = await getDocs(q);
-  let valide = false;
-  resultats.forEach((d) => { if (d.data().statut === "valide") valide = true; });
-  return valide;
-}
-
 surChangementAuth(async (utilisateur) => {
   if (!utilisateur) return;
 
@@ -59,12 +47,7 @@ surChangementAuth(async (utilisateur) => {
 
   try {
     const profil = await recupererProfil(utilisateur.uid);
-    const estVendeur = profil && (
-      profil.role === "vendeur" ||
-      profil.statutVendeur === "valide" ||
-      await demandeValidee(utilisateur.uid)
-    );
-    if (estVendeur) {
+    if (estVendeurValide(profil)) {
       blocCommandesRecues.style.display = "block";
       chargerCommandesRecues(utilisateur.uid, profil.nom);
     }
@@ -76,17 +59,17 @@ surChangementAuth(async (utilisateur) => {
 // ---------- Commandes passées en tant qu'acheteur ----------
 async function chargerMesCommandes(uid) {
   try {
-    const q = query(collection(db, "commandes"), where("acheteurUid", "==", uid));
-    const resultats = await getDocs(q);
+    const commandes = camelListe(ok(
+      await sb.from("commandes").select("*").eq("acheteur_uid", uid).order("date_creation", { ascending: false })
+    ));
 
-    if (resultats.empty) {
+    if (commandes.length === 0) {
       listeMesCommandes.innerHTML = `<p style="font-size:0.9rem;">Aucune commande pour l'instant.</p>`;
       return;
     }
 
     listeMesCommandes.innerHTML = `<p style="font-size:0.85rem; margin-bottom:10px;">Tu paies à la réception de ta commande.</p>`;
-    resultats.forEach((docSnap) => {
-      const c = docSnap.data();
+    commandes.forEach((c) => {
       const statut = normaliserStatut(c.statut);
       const carte = document.createElement("div");
       carte.className = "carte-commande";
@@ -106,16 +89,14 @@ async function chargerMesCommandes(uid) {
 // ---------- Commandes reçues en tant que vendeur ----------
 async function chargerCommandesRecues(uidVendeur, nomVendeur) {
   try {
-    const q = query(collection(db, "commandes"), where("vendeurUids", "array-contains", uidVendeur));
-    const resultats = await getDocs(q);
+    const commandes = camelListe(ok(
+      await sb.from("commandes").select("*").contains("vendeur_uids", [uidVendeur])
+    ));
 
-    if (resultats.empty) {
+    if (commandes.length === 0) {
       listeCommandesRecues.innerHTML = `<p style="font-size:0.9rem; color:var(--texte-doux);">Aucune commande reçue pour l'instant.</p>`;
       return;
     }
-
-    const commandes = [];
-    resultats.forEach((d) => commandes.push({ id: d.id, ...d.data() }));
 
     // Les commandes à livrer d'abord, puis les plus récentes
     commandes.sort((a, b) => {
@@ -131,7 +112,7 @@ async function chargerCommandesRecues(uidVendeur, nomVendeur) {
     mettreAJourResume();
   } catch (err) {
     console.error("Erreur chargement commandes reçues :", err);
-    listeCommandesRecues.innerHTML = `<p style="font-size:0.9rem; color:var(--erreur);">Impossible de charger les commandes${err.code === "permission-denied" ? " (accès refusé par les règles Firestore)" : ""}.</p>`;
+    listeCommandesRecues.innerHTML = `<p style="font-size:0.9rem; color:var(--erreur);">Impossible de charger les commandes${estRefuse(err) ? " (accès refusé)" : ""}.</p>`;
   }
 }
 
@@ -186,14 +167,15 @@ function carteCommandeRecue(c, uidVendeur, nomVendeur) {
 
     boutonLivraison.disabled = true;
     try {
-      await updateDoc(doc(db, "commandes", c.id), { statut: nouveau });
+      const lignes = ok(await sb.from("commandes").update({ statut: nouveau }).eq("id", c.id).select("id"));
+      if (!lignes.length) throw Object.assign(new Error("refusé"), { code: "42501" });
       carte.dataset.statut = nouveau;
       afficherStatut();
       mettreAJourResume();
     } catch (err) {
       console.error("Erreur changement de statut :", err);
-      alert(err.code === "permission-denied"
-        ? "Modification refusée par les règles Firestore."
+      alert(estRefuse(err)
+        ? "Modification refusée."
         : "Impossible de changer le statut. Réessaie.");
     } finally {
       boutonLivraison.disabled = false;

@@ -1,16 +1,12 @@
 // ===========================================================
 // admin.js — logique de la page admin.html
-// Réservée aux comptes dont le rôle Firestore est "admin".
-// Pour créer un admin : dans la console Firebase > Firestore,
-// ouvre le document utilisateurs/{uid} du compte concerné et
-// change manuellement le champ "role" en "admin".
+// Réservée aux comptes dont le rôle est "admin".
+// Pour créer un admin : dans Supabase > SQL Editor, exécute
+//   update public.utilisateurs set role = 'admin' where email = 'ton-email';
 // ===========================================================
 
-import { db } from "./firebase-config.js";
+import { sb, ok, camelListe } from "./supabase-config.js";
 import { recupererProfil, surChangementAuth } from "./auth.js";
-import {
-  collection, query, where, getDocs, doc, getDoc, updateDoc
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const corpsTableau = document.getElementById("corps-tableau");
 const messageAdmin = document.getElementById("message-admin");
@@ -32,25 +28,22 @@ surChangementAuth(async (utilisateur) => {
 });
 
 async function chargerDemandes() {
-  const q = query(collection(db, "demandesVendeur"), where("statut", "==", "en_attente"));
-  const resultats = await getDocs(q);
+  const demandes = camelListe(ok(
+    await sb.from("demandes_vendeur").select("*, utilisateurs(nom)").eq("statut", "en_attente").order("date_envoi")
+  ));
 
-  if (resultats.empty) {
+  if (demandes.length === 0) {
     corpsTableau.innerHTML = `<tr><td colspan="7">Aucune demande en attente.</td></tr>`;
     return;
   }
 
   corpsTableau.innerHTML = "";
-  for (const docSnap of resultats.docs) {
-    const demande = docSnap.data();
-    const idDemande = docSnap.id;
-
-    // On récupère le nom de l'utilisateur qui a fait la demande
-    const snapUtilisateur = await getDoc(doc(db, "utilisateurs", demande.uid));
-    const nom = snapUtilisateur.exists() ? snapUtilisateur.data().nom : "Utilisateur inconnu";
+  for (const demande of demandes) {
+    const idDemande = demande.id;
+    const nom = echapperArticle(demande.utilisateurs?.nom || "Utilisateur inconnu");
 
     const positionAffichage = demande.position?.texte
-      ? demande.position.texte
+      ? echapperArticle(demande.position.texte)
       : (demande.position?.lat
           ? `<a href="https://www.google.com/maps?q=${demande.position.lat},${demande.position.lng}" target="_blank">Voir sur la carte</a>`
           : "Non renseignée");
@@ -58,11 +51,11 @@ async function chargerDemandes() {
     const ligne = document.createElement("tr");
     ligne.innerHTML = `
       <td>${nom}</td>
-      <td>${demande.specialite}</td>
-      <td>${demande.anciennete} ans</td>
-      <td>${demande.telephone || "—"}</td>
+      <td>${echapperArticle(demande.specialite)}</td>
+      <td>${Number(demande.anciennete) || 0} ans</td>
+      <td>${echapperArticle(demande.telephone || "—")}</td>
       <td>${positionAffichage}</td>
-      <td>${demande.description}</td>
+      <td>${echapperArticle(demande.description)}</td>
       <td class="actions-demande">
         <button class="bouton petit" data-action="valider" data-id="${idDemande}" data-uid="${demande.uid}">Valider</button>
         <button class="bouton petit refus" data-action="refuser" data-id="${idDemande}" data-uid="${demande.uid}">Refuser</button>
@@ -87,14 +80,8 @@ async function gererClicAction(e) {
   bouton.closest("tr").style.opacity = "0.5";
 
   try {
-    // Met à jour la demande
-    await updateDoc(doc(db, "demandesVendeur", idDemande), { statut: nouveauStatut });
-
-    // Met à jour le profil utilisateur (rôle + statut)
-    await updateDoc(doc(db, "utilisateurs", uidVendeur), {
-      statutVendeur: nouveauStatut,
-      role: nouveauStatut === "valide" ? "vendeur" : "acheteur"
-    });
+    // La base met à jour la demande ET le rôle de l'utilisateur en une seule fois
+    ok(await sb.rpc("traiter_demande_vendeur", { p_demande: idDemande, p_statut: nouveauStatut }));
 
     bouton.closest("tr").remove();
   } catch (err) {
@@ -137,28 +124,28 @@ function ouvrirLectureArticle(article) {
 }
 
 async function chargerArticles() {
-  const q = query(collection(db, "articles"), where("statut", "==", "en_attente"));
-  const resultats = await getDocs(q);
+  const articlesAttente = camelListe(ok(
+    await sb.from("articles").select("*").eq("statut", "en_attente").order("date_creation")
+  ));
 
-  if (resultats.empty) {
+  if (articlesAttente.length === 0) {
     corpsTableauArticles.innerHTML = `<tr><td colspan="4">Aucun article en attente.</td></tr>`;
     return;
   }
 
   corpsTableauArticles.innerHTML = "";
   const articlesParId = {};
-  resultats.forEach((docSnap) => {
-    const article = docSnap.data();
-    articlesParId[docSnap.id] = article;
+  articlesAttente.forEach((article) => {
+    articlesParId[article.id] = article;
     const ligne = document.createElement("tr");
     ligne.innerHTML = `
-      <td><a href="#" data-lire="${docSnap.id}">${echapperArticle(article.titre)}</a></td>
+      <td><a href="#" data-lire="${article.id}">${echapperArticle(article.titre)}</a></td>
       <td>${echapperArticle(article.auteurNom)}</td>
       <td>${echapperArticle(String(article.contenu || "").slice(0, 100))}...</td>
       <td class="actions-demande">
-        <button class="bouton petit secondaire" data-lire="${docSnap.id}">Lire</button>
-        <button class="bouton petit" data-action-article="publie" data-id="${docSnap.id}">Publier</button>
-        <button class="bouton petit refus" data-action-article="refuse" data-id="${docSnap.id}">Refuser</button>
+        <button class="bouton petit secondaire" data-lire="${article.id}">Lire</button>
+        <button class="bouton petit" data-action-article="publie" data-id="${article.id}">Publier</button>
+        <button class="bouton petit refus" data-action-article="refuse" data-id="${article.id}">Refuser</button>
       </td>
     `;
     corpsTableauArticles.appendChild(ligne);
@@ -176,7 +163,8 @@ async function chargerArticles() {
     if (!bouton) return;
     const nouveauStatut = bouton.dataset.actionArticle;
     try {
-      await updateDoc(doc(db, "articles", bouton.dataset.id), { statut: nouveauStatut });
+      const lignes = ok(await sb.from("articles").update({ statut: nouveauStatut }).eq("id", bouton.dataset.id).select("id"));
+      if (!lignes.length) throw new Error("Modification refusée");
       bouton.closest("tr").remove();
     } catch (err) {
       afficherMessage("Erreur lors du traitement de l'article.", "erreur");

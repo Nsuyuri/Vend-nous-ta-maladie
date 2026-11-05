@@ -2,14 +2,12 @@
 // profil.js — logique de la page profil.html
 // ===========================================================
 
-import { db } from "./firebase-config.js";
+import { sb, ok, snake, estRefuse } from "./supabase-config.js";
 import {
-  inscription, connexion, deconnexion,
-  recupererProfil, surChangementAuth, traduireErreurFirebase
+  inscription, connexion, deconnexion, inscriptionParNom, connexionParNom, connexionSociale,
+  envoyerLienReinitialisation, changerMotDePasse, surRecuperationMotDePasse,
+  recupererProfil, surChangementAuth, traduireErreur, enregistrerAcceptation
 } from "./auth.js";
-import {
-  collection, addDoc, query, where, getDocs, doc, updateDoc
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { envoyerImage } from "./cloudinary.js";
 
 // ---------- Éléments du DOM ----------
@@ -38,20 +36,60 @@ let modeLocalisation = "manuel";
 
 let utilisateurConnecte = null;
 
-// ---------- Bascule connexion / inscription ----------
-lienBasculer.addEventListener("click", (e) => {
-  e.preventDefault();
-  const inscriptionVisible = formInscription.style.display !== "none";
-  formInscription.style.display = inscriptionVisible ? "none" : "block";
-  formConnexion.style.display = inscriptionVisible ? "block" : "none";
-  titreAuth.textContent = inscriptionVisible ? "Connexion" : "Créer un compte";
-  lienBasculer.textContent = inscriptionVisible
-    ? "Pas encore de compte ? Inscris-toi"
-    : "Déjà un compte ? Connecte-toi";
+// ---------- Méthodes de connexion : nom + code, ou email ----------
+const formNom = document.getElementById("form-nom");
+const blocEmail = document.getElementById("bloc-email");
+const formOubli = document.getElementById("form-oubli");
+const blocNouveauMdp = document.getElementById("bloc-nouveau-mdp");
+const messageNouveauMdp = document.getElementById("message-nouveau-mdp");
+
+let methode = "nom";      // "nom" ou "email"
+let inscrire = false;     // false = connexion, true = création de compte
+let enRecuperation = false;
+
+function majAffichageAuth() {
+  const estNom = methode === "nom";
+  document.getElementById("onglet-nom").classList.toggle("secondaire", !estNom);
+  document.getElementById("onglet-email").classList.toggle("secondaire", estNom);
+  formNom.style.display = estNom ? "block" : "none";
+  blocEmail.style.display = estNom ? "none" : "block";
+  formConnexion.style.display = (!estNom && !inscrire) ? "block" : "none";
+  formInscription.style.display = (!estNom && inscrire) ? "block" : "none";
+  formOubli.style.display = "none";
+  document.getElementById("bouton-nom").textContent = inscrire ? "Créer mon compte" : "Se connecter";
+  document.getElementById("code-simple").autocomplete = inscrire ? "new-password" : "current-password";
+  titreAuth.textContent = inscrire ? "Créer un compte" : "Connexion";
+  lienBasculer.textContent = inscrire ? "Déjà un compte ? Connecte-toi" : "Pas encore de compte ? Inscris-toi";
+  lienBasculer.parentElement.style.display = "block";
   messageAuth.innerHTML = "";
+}
+
+document.getElementById("onglet-nom").addEventListener("click", () => { methode = "nom"; majAffichageAuth(); });
+document.getElementById("onglet-email").addEventListener("click", () => { methode = "email"; majAffichageAuth(); });
+lienBasculer.addEventListener("click", (e) => { e.preventDefault(); inscrire = !inscrire; majAffichageAuth(); });
+majAffichageAuth();
+
+// ---------- Connexion / inscription avec NOM + CODE ----------
+formNom.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const nom = document.getElementById("nom-simple").value;
+  const code = document.getElementById("code-simple").value;
+  const bouton = document.getElementById("bouton-nom");
+  if (code.length < 6) {
+    afficherMessage(messageAuth, "Le code doit contenir au moins 6 caractères.", "erreur");
+    return;
+  }
+  bouton.disabled = true;
+  try {
+    if (inscrire) await inscriptionParNom(nom, code);
+    else await connexionParNom(nom, code);
+  } catch (err) {
+    afficherMessage(messageAuth, traduireErreur(err), "erreur");
+  }
+  bouton.disabled = false;
 });
 
-// ---------- Connexion ----------
+// ---------- Connexion avec EMAIL ----------
 formConnexion.addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("email-connexion").value;
@@ -59,11 +97,11 @@ formConnexion.addEventListener("submit", async (e) => {
   try {
     await connexion(email, mdp);
   } catch (err) {
-    afficherMessage(messageAuth, traduireErreurFirebase(err.code), "erreur");
+    afficherMessage(messageAuth, traduireErreur(err), "erreur");
   }
 });
 
-// ---------- Inscription ----------
+// ---------- Inscription avec EMAIL ----------
 formInscription.addEventListener("submit", async (e) => {
   e.preventDefault();
   const nom = document.getElementById("nom-inscription").value;
@@ -72,7 +110,66 @@ formInscription.addEventListener("submit", async (e) => {
   try {
     await inscription(nom, email, mdp);
   } catch (err) {
-    afficherMessage(messageAuth, traduireErreurFirebase(err.code), "erreur");
+    afficherMessage(messageAuth, traduireErreur(err), "erreur");
+  }
+});
+
+// ---------- Google et Facebook ----------
+async function connecterAvec(fournisseur) {
+  try {
+    await connexionSociale(fournisseur);   // la page part chez Google / Facebook puis revient ici
+  } catch (err) {
+    console.error("Connexion " + fournisseur + " :", err);
+    afficherMessage(messageAuth, "Cette connexion n'est pas disponible pour l'instant. Utilise ton nom ou ton email.", "erreur");
+  }
+}
+document.getElementById("bouton-google").addEventListener("click", () => connecterAvec("google"));
+document.getElementById("bouton-facebook").addEventListener("click", () => connecterAvec("facebook"));
+
+// ---------- Mot de passe oublié ----------
+document.getElementById("lien-oubli").addEventListener("click", (e) => {
+  e.preventDefault();
+  formConnexion.style.display = "none";
+  formOubli.style.display = "block";
+  lienBasculer.parentElement.style.display = "none";
+  messageAuth.innerHTML = "";
+  document.getElementById("email-oubli").value = document.getElementById("email-connexion").value;
+});
+document.getElementById("lien-retour-connexion").addEventListener("click", (e) => {
+  e.preventDefault();
+  majAffichageAuth();
+});
+formOubli.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const bouton = formOubli.querySelector("button[type=submit]");
+  bouton.disabled = true;
+  try {
+    await envoyerLienReinitialisation(document.getElementById("email-oubli").value);
+    afficherMessage(messageAuth, "Si cet email a un compte, un lien vient d'être envoyé. Pense à regarder aussi les spams.", "succes");
+  } catch (err) {
+    afficherMessage(messageAuth, traduireErreur(err), "erreur");
+  }
+  bouton.disabled = false;
+});
+
+// ---------- Nouveau mot de passe (arrivée depuis le lien reçu par email) ----------
+surRecuperationMotDePasse(() => {
+  enRecuperation = true;
+  blocAuth.style.display = "none";
+  blocProfil.style.display = "none";
+  blocNouveauMdp.style.display = "block";
+});
+document.getElementById("form-nouveau-mdp").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const bouton = e.target.querySelector("button[type=submit]");
+  bouton.disabled = true;
+  try {
+    await changerMotDePasse(document.getElementById("nouveau-mdp").value);
+    afficherMessage(messageNouveauMdp, "Mot de passe changé ✓ Tu es connecté.", "succes");
+    setTimeout(() => { window.location.href = "profil.html"; }, 1200);
+  } catch (err) {
+    afficherMessage(messageNouveauMdp, traduireErreur(err), "erreur");
+    bouton.disabled = false;
   }
 });
 
@@ -167,16 +264,14 @@ formDemande.addEventListener("submit", async (e) => {
     telephone: document.getElementById("telephone-demande").value,
     description: document.getElementById("description-demande").value,
     position: position,
-    engagementResponsabilite: true,
-    statut: "en_attente",
-    dateEnvoi: new Date().toISOString()
+    engagementResponsabilite: true
   };
 
   const boutonEnvoyer = document.getElementById("bouton-envoyer-demande");
   boutonEnvoyer.disabled = true;
 
   try {
-    await addDoc(collection(db, "demandesVendeur"), donnees);
+    ok(await sb.from("demandes_vendeur").insert(snake(donnees)));
     afficherMessage(messageDemande, "Ta demande a été envoyée. Tu seras notifié après examen.", "succes");
     formDemande.reset();
     positionResultat.textContent = "";
@@ -192,6 +287,7 @@ formDemande.addEventListener("submit", async (e) => {
 // ---------- Écoute de l'état de connexion ----------
 surChangementAuth(async (utilisateur) => {
   utilisateurConnecte = utilisateur;
+  if (enRecuperation) return;   // la personne est en train de choisir un nouveau mot de passe
 
   if (!utilisateur) {
     blocAuth.style.display = "block";
@@ -204,6 +300,7 @@ surChangementAuth(async (utilisateur) => {
 
   const profil = await recupererProfil(utilisateur.uid);
   if (!profil) return;
+  enregistrerAcceptation(profil);   // garde la date d'acceptation des conditions
 
   document.getElementById("profil-nom").textContent = profil.nom;
   document.getElementById("profil-email").textContent = profil.email;
@@ -216,16 +313,12 @@ surChangementAuth(async (utilisateur) => {
 
 // Cherche la demande la plus récente de l'utilisateur dans "demandesVendeur"
 async function recupererStatutDemande(uid, statutParDefaut) {
-  const q = query(collection(db, "demandesVendeur"), where("uid", "==", uid));
-  const resultats = await getDocs(q);
-  if (resultats.empty) return statutParDefaut || "aucun";
-  // On prend la demande la plus récente
-  let derniere = null;
-  resultats.forEach((docSnap) => {
-    const d = docSnap.data();
-    if (!derniere || d.dateEnvoi > derniere.dateEnvoi) derniere = d;
-  });
-  return derniere.statut;
+  const lignes = ok(
+    await sb.from("demandes_vendeur").select("statut").eq("uid", uid).order("date_envoi", { ascending: false }).limit(1)
+  );
+  if (lignes.length === 0) return statutParDefaut || "aucun";
+  // La demande la plus récente
+  return lignes[0].statut;
 }
 
 // Met à jour le badge de statut + cache/affiche le formulaire de demande
@@ -282,15 +375,16 @@ champPhoto.addEventListener("change", async () => {
   afficherMessage(messagePhoto, "Envoi de la photo...", "succes");
   try {
     const url = await envoyerImage(fichier, "profils");
-    await updateDoc(doc(db, "utilisateurs", utilisateurConnecte.uid), { photoUrl: url });
+    const lignes = ok(await sb.from("utilisateurs").update({ photo_url: url }).eq("id", utilisateurConnecte.uid).select("id"));
+    if (!lignes.length) throw Object.assign(new Error("refusé"), { code: "42501" });
     afficherAvatar(document.getElementById("profil-nom").textContent, url);
     afficherMessage(messagePhoto, "Photo mise à jour.", "succes");
   } catch (err) {
     console.error("Erreur photo de profil :", err);
     afficherMessage(
       messagePhoto,
-      err.code === "permission-denied"
-        ? "Modification refusée par les règles Firestore."
+      estRefuse(err)
+        ? "Modification refusée."
         : "Impossible d'envoyer la photo. Réessaie.",
       "erreur"
     );

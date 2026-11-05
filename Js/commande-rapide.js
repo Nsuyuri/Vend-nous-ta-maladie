@@ -7,8 +7,7 @@
 // et part dès que le réseau revient.
 // ===========================================================
 
-import { db, auth } from "./firebase-config.js";
-import { addDoc, collection } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { auth, envoyerCommande, estRefuse } from "./supabase-config.js";
 import { recupererProfil } from "./auth.js";
 import { optimiserImage } from "./outils.js";
 
@@ -60,16 +59,8 @@ export async function ouvrirCommandeRapide(produit) {
     feuille.querySelector("[data-fermer]").addEventListener("click", fermer);
   };
 
-  if (!utilisateur) {
-    messageSimple(
-      "Connecte-toi pour commander",
-      "Une seule fois. Ensuite, tes coordonnées sont déjà pré-remplies.",
-      `<a href="profil.html" class="bouton" style="display:block; text-align:center;">Me connecter</a>`
-    );
-    return;
-  }
-
-  if (produit.vendeurUid === utilisateur.uid) {
+  // Pas besoin de compte : un visiteur peut commander directement.
+  if (utilisateur && produit.vendeurUid === utilisateur.uid) {
     messageSimple("C'est ton produit", "Tu ne peux pas commander un produit que tu vends toi-même.");
     return;
   }
@@ -112,6 +103,7 @@ export async function ouvrirCommandeRapide(produit) {
       </select></div>
 
     <p style="font-size:0.85rem; color:var(--texte-doux); margin:2px 0 10px;">Tu paies uniquement à la réception de ta commande.</p>
+    ${utilisateur ? "" : `<p style="font-size:0.82rem; color:var(--texte-doux); margin:0 0 10px;">Tu commandes en visiteur, sans compte. <a href="profil.html">Crée un compte</a> pour retrouver tes commandes.</p>`}
     <div id="cr-message"></div>
     <button type="button" class="bouton" id="cr-confirmer" style="width:100%;"></button>
   `;
@@ -155,12 +147,13 @@ export async function ouvrirCommandeRapide(produit) {
     try {
       let nomAcheteur = donnees.nom;
       try {
-        const profil = await recupererProfil(utilisateur.uid);
+        const profil = utilisateur ? await recupererProfil(utilisateur.uid) : null;
         if (profil && profil.nom) nomAcheteur = profil.nom;
       } catch {}
 
-      const envoi = addDoc(collection(db, "commandes"), {
-        acheteurUid: utilisateur.uid,
+      // Le total et les vendeurs concernés sont recalculés par la base (prix réels)
+      const envoi = envoyerCommande({
+        acheteurUid: utilisateur ? utilisateur.uid : null,
         acheteurNom: nomAcheteur,
         produits: [{
           produitId: produit.produitId,
@@ -171,19 +164,15 @@ export async function ouvrirCommandeRapide(produit) {
           vendeurNom: produit.vendeurNom,
           quantite: quantite
         }],
-        vendeurUids: [produit.vendeurUid],
-        total: prix * quantite,
         nom: donnees.nom,
         telephone: donnees.telephone,
         quartier: donnees.quartier,
-        modeContact: donnees.modeContact,
-        statut: "en_attente",
-        dateCreation: new Date().toISOString()
+        modeContact: donnees.modeContact
       });
 
       // Connexion lente : après 8 s, on rassure l'acheteur (la commande est gardée sur l'appareil)
       const resultat = await Promise.race([
-        envoi.then(() => "envoyee"),
+        envoi,
         new Promise((r) => setTimeout(() => r("en_attente_reseau"), 8000))
       ]);
       envoi.catch((e) => console.error("Commande en attente :", e));
@@ -201,7 +190,7 @@ export async function ouvrirCommandeRapide(produit) {
       feuille.querySelector("[data-fermer]").addEventListener("click", fermer);
     } catch (err) {
       console.error("Erreur commande rapide :", err);
-      message.innerHTML = `<div class="message erreur">Erreur lors de l'envoi${err.code === "permission-denied" ? " (refusé par les règles Firestore)" : ""}. Réessaie.</div>`;
+      message.innerHTML = `<div class="message erreur">Erreur lors de l'envoi${estRefuse(err) ? " (reconnecte-toi puis réessaie)" : ""}. Réessaie.</div>`;
       bouton.disabled = false;
       majTotal();
     }

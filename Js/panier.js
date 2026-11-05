@@ -2,9 +2,7 @@
 // panier.js — page panier.html
 // ===========================================================
 
-import { db } from "./firebase-config.js";
-import { auth } from "./firebase-config.js";
-import { addDoc, collection } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { auth, envoyerCommande, estRefuse } from "./supabase-config.js";
 import { recupererProfil } from "./auth.js";
 import { optimiserImage } from "./outils.js";
 import {
@@ -112,10 +110,7 @@ listeConteneur.addEventListener("click", (e) => {
 formCommande.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  if (!auth.currentUser) {
-    afficherMessage("Connecte-toi sur la page Profil avant de commander.", "erreur");
-    return;
-  }
+  try { await auth.authStateReady(); } catch {}
 
   const panier = recupererPanier();
   if (panier.length === 0) return;
@@ -124,32 +119,34 @@ formCommande.addEventListener("submit", async (e) => {
   bouton.disabled = true;
 
   try {
-    const profil = await recupererProfil(auth.currentUser.uid);
-    const total = panier.reduce((somme, item) => somme + item.prix * item.quantite, 0);
-    const vendeurUids = [...new Set(panier.map((item) => item.vendeurUid))];
-
-    await addDoc(collection(db, "commandes"), {
-      acheteurUid: auth.currentUser.uid,
-      acheteurNom: profil.nom,
+    // Visiteur (sans compte) ou personne connectée
+    const profil = auth.currentUser ? await recupererProfil(auth.currentUser.uid) : null;
+    // Le total et les vendeurs concernés sont recalculés par la base (prix réels)
+    const resultat = await envoyerCommande({
+      acheteurUid: auth.currentUser ? auth.currentUser.uid : null,
+      acheteurNom: profil?.nom || document.getElementById("commande-nom").value,
       produits: panier,
-      vendeurUids: vendeurUids,
-      total: total,
       nom: document.getElementById("commande-nom").value,
       telephone: document.getElementById("commande-telephone").value,
       quartier: document.getElementById("commande-quartier").value,
-      modeContact: document.querySelector('input[name="commande-contact"]:checked').value,
-      statut: "en_attente",
-      dateCreation: new Date().toISOString()
+      modeContact: document.querySelector('input[name="commande-contact"]:checked').value
     });
 
     viderPanier();
-    afficherMessage("Commande envoyée ! Le vendeur va te contacter pour la livraison. Tu paieras à la réception.", "succes");
+    afficherMessage(
+      resultat === "en_attente_reseau"
+        ? "Commande enregistrée. Ta connexion est coupée : elle partira dès que le réseau revient (garde le site ouvert ou reviens dessus)."
+        : "Commande envoyée ! Le vendeur va te contacter pour la livraison. Tu paieras à la réception.",
+      "succes"
+    );
     formCommande.reset();
     etape = 1;
     afficherPanier();
   } catch (err) {
     console.error("Erreur envoi commande :", err);
-    afficherMessage("Erreur lors de l'envoi de la commande. Réessaie.", "erreur");
+    afficherMessage(estRefuse(err)
+      ? "Commande refusée. Reconnecte-toi puis réessaie."
+      : "Erreur lors de l'envoi de la commande. Réessaie.", "erreur");
   } finally {
     bouton.disabled = false;
   }

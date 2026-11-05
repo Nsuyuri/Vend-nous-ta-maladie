@@ -2,9 +2,8 @@
 // article.js — page article.html (lecture d'un article)
 // ===========================================================
 
-import { db } from "./firebase-config.js";
+import { sb, ok, camel } from "./supabase-config.js";
 import { optimiserImage } from "./outils.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const parametres = new URLSearchParams(window.location.search);
 const idArticle = parametres.get("id");
@@ -18,19 +17,19 @@ function echapper(texte) {
 }
 
 async function afficherArticle() {
-  if (!idArticle) {
+  if (!idArticle || !/^[0-9a-f-]{36}$/i.test(idArticle)) {
     messageZone.innerHTML = `<div class="message erreur">Article introuvable.</div>`;
     return;
   }
 
   try {
-    const snap = await getDoc(doc(db, "articles", idArticle));
-    if (!snap.exists() || snap.data().statut !== "publie") {
+    const ligne = ok(await sb.from("articles").select("*").eq("id", idArticle).maybeSingle());
+    if (!ligne || ligne.statut !== "publie") {
       messageZone.innerHTML = `<div class="message erreur">Cet article n'est pas disponible.</div>`;
       return;
     }
 
-    const article = snap.data();
+    const article = camel(ligne);
     const image = String(article.imageUrl || "");
     document.title = `${article.titre} — Vend Nous Ta Maladie`;
     conteneur.innerHTML = `

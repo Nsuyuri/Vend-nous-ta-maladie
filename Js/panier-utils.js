@@ -8,7 +8,9 @@ const CLE_PANIER = "panier_vend_nous_ta_maladie";
 export function recupererPanier() {
   try {
     const brut = localStorage.getItem(CLE_PANIER);
-    return brut ? JSON.parse(brut) : [];
+    const liste = brut ? JSON.parse(brut) : [];
+    // On ignore les anciens produits (identifiants d'avant la migration)
+    return liste.filter((p) => /^[0-9a-f-]{36}$/i.test(String(p.produitId || "")));
   } catch {
     return [];
   }

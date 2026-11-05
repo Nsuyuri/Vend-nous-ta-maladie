@@ -2,11 +2,8 @@
 // ecrire-article.js — section "Écrire un article" sur profil.html
 // ===========================================================
 
-import { db, auth } from "./firebase-config.js";
+import { sb, ok, camelListe, snake, auth, estRefuse } from "./supabase-config.js";
 import { recupererProfil, surChangementAuth } from "./auth.js";
-import {
-  collection, addDoc, query, where, getDocs, doc, deleteDoc
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const formArticle = document.getElementById("form-article");
 const messageZone = document.getElementById("message-article-profil");
@@ -33,15 +30,13 @@ formArticle.addEventListener("submit", async (e) => {
     }
 
     const profil = await recupererProfil(auth.currentUser.uid);
-    await addDoc(collection(db, "articles"), {
+    ok(await sb.from("articles").insert(snake({
       titre: document.getElementById("article-titre").value,
       contenu: document.getElementById("article-contenu").value,
       imageUrl: urlImage,
       auteurUid: auth.currentUser.uid,
-      auteurNom: profil.nom,
-      statut: "en_attente",
-      dateCreation: new Date().toISOString()
-    });
+      auteurNom: profil.nom
+    })));
 
     afficherMessage("Article soumis. Il sera visible sur le blog après validation.", "succes");
     formArticle.reset();
@@ -66,10 +61,11 @@ function afficherAucunArticle() {
 }
 
 async function chargerMesArticles(uid) {
-  const q = query(collection(db, "articles"), where("auteurUid", "==", uid));
-  const resultats = await getDocs(q);
+  const articles = camelListe(ok(
+    await sb.from("articles").select("*").eq("auteur_uid", uid).order("date_creation", { ascending: false })
+  ));
 
-  if (resultats.empty) {
+  if (articles.length === 0) {
     afficherAucunArticle();
     return;
   }
@@ -78,13 +74,12 @@ async function chargerMesArticles(uid) {
   const textes = { en_attente: "En attente", publie: "Publié", refuse: "Refusé" };
 
   listeMesArticles.innerHTML = "";
-  resultats.forEach((docSnap) => {
-    const a = docSnap.data();
+  articles.forEach((a) => {
     const ligne = document.createElement("div");
     ligne.style.cssText = "display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;";
     ligne.innerHTML = `
       <span>${a.statut === "publie"
-        ? `<a href="/article.html?id=${encodeURIComponent(docSnap.id)}">${echapper(a.titre)}</a>`
+        ? `<a href="/article.html?id=${encodeURIComponent(a.id)}">${echapper(a.titre)}</a>`
         : echapper(a.titre)} —</span>
       <span class="statut-badge ${labels[a.statut] || ""}">${textes[a.statut] || echapper(a.statut)}</span>
     `;
@@ -99,7 +94,8 @@ async function chargerMesArticles(uid) {
       boutonSupprimer.disabled = true;
       boutonSupprimer.textContent = "Suppression...";
       try {
-        await deleteDoc(doc(db, "articles", docSnap.id));
+        const supprimes = ok(await sb.from("articles").delete().eq("id", a.id).select("id"));
+        if (!supprimes.length) throw Object.assign(new Error("refusé"), { code: "42501" });
         ligne.remove();
         if (!listeMesArticles.children.length) afficherAucunArticle();
         afficherMessage("Article supprimé.", "succes");
@@ -108,8 +104,8 @@ async function chargerMesArticles(uid) {
         boutonSupprimer.disabled = false;
         boutonSupprimer.textContent = "Supprimer";
         afficherMessage(
-          err.code === "permission-denied"
-            ? "Suppression refusée par les règles Firestore."
+          estRefuse(err)
+            ? "Suppression refusée."
             : "Impossible de supprimer l'article. Réessaie.",
           "erreur"
         );
